@@ -6,6 +6,10 @@
   <title>Rusty Bridge Game</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     html, body {
       margin: 0;
       width: 100%;
@@ -14,62 +18,181 @@
       background: #000;
     }
 
+    /* 実際にプレイヤーが見る画面 */
     #game {
+      position: relative;
       width: 100%;
       height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
+      overflow: hidden;
       background: #000;
     }
 
+    /*
+      大きなフィールド。
+      地図を画面よりかなり大きく表示する。
+    */
     #world {
-      position: relative;
-      height: 100%;
-      width: fit-content;
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 300%;
     }
 
     #map {
       height: 100%;
       width: auto;
       display: block;
+
       user-select: none;
       -webkit-user-drag: none;
+      pointer-events: none;
     }
 
+    /*
+      メイン画面の船。
+      船は画面中央に固定して、
+      背景側を動かす。
+    */
     #boat {
       position: absolute;
-      left: 33%;
-      top: 24.5%;
-      width: 2.75%;
 
-      transform: translate(-50%, -50%) rotate(180deg);
+      left: 50%;
+      top: 50%;
+
+      width: 42px;
+
+      transform:
+        translate(-50%, -50%)
+        rotate(180deg);
+
       transform-origin: center;
+
+      z-index: 20;
 
       pointer-events: none;
       user-select: none;
       -webkit-user-drag: none;
     }
 
+    /* -------------------------
+       ミニマップ
+    -------------------------- */
+
+    #minimap {
+      position: absolute;
+
+      right: 18px;
+      bottom: 18px;
+
+      width: 180px;
+
+      border: 3px solid rgba(255,255,255,0.9);
+
+      background: #000;
+
+      z-index: 30;
+
+      overflow: hidden;
+    }
+
+    #miniMapImage {
+      width: 100%;
+      display: block;
+
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* 現在位置 */
+    #miniPlayer {
+      position: absolute;
+
+      width: 10px;
+      height: 10px;
+
+      background: red;
+
+      border: 2px solid white;
+
+      border-radius: 50%;
+
+      transform: translate(-50%, -50%);
+
+      z-index: 31;
+    }
+
+    /* MAP表示/非表示ボタン */
+
+    #mapToggle {
+      position: absolute;
+
+      right: 18px;
+      bottom: 18px;
+
+      z-index: 40;
+
+      display: none;
+
+      padding: 10px 16px;
+
+      border: none;
+      border-radius: 8px;
+
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    #closeMap {
+      position: absolute;
+
+      right: 4px;
+      top: 4px;
+
+      width: 30px;
+      height: 30px;
+
+      border: none;
+      border-radius: 50%;
+
+      background: rgba(0,0,0,0.65);
+      color: white;
+
+      font-size: 18px;
+
+      z-index: 32;
+    }
+
+    /* -------------------------
+       操作ボタン
+    -------------------------- */
+
     #controls {
       position: absolute;
+
       left: 20px;
       bottom: 20px;
+
       width: 150px;
       height: 150px;
-      z-index: 10;
+
+      z-index: 40;
     }
 
     .control-btn {
       position: absolute;
+
       width: 50px;
       height: 50px;
+
       border: none;
       border-radius: 50%;
-      background: rgba(255,255,255,0.8);
+
+      background: rgba(255,255,255,0.82);
+
       font-size: 24px;
       font-weight: bold;
+
       touch-action: none;
     }
 
@@ -93,215 +216,437 @@
       top: 50px;
     }
 
-    #collisionCanvas {
-      display: none;
+    @media (max-width: 600px) {
+
+      #minimap {
+        width: 130px;
+      }
+
+      #boat {
+        width: 32px;
+      }
+
     }
   </style>
 </head>
 
 <body>
 
-  <div id="game">
+<div id="game">
 
-    <div id="world">
-      <img id="map" src="map.png" alt="Game Map">
-      <img id="boat" src="boat.png" alt="Boat">
-    </div>
+  <!-- 大きなフィールド -->
+  <div id="world">
+    <img id="map" src="map.png" alt="Game Map">
+  </div>
 
-    <div id="controls">
-      <button id="up" class="control-btn">↑</button>
-      <button id="down" class="control-btn">↓</button>
-      <button id="left" class="control-btn">←</button>
-      <button id="right" class="control-btn">→</button>
-    </div>
+  <!-- メイン画面の船 -->
+  <img id="boat" src="boat.png" alt="Boat">
+
+  <!-- 操作 -->
+  <div id="controls">
+    <button id="up" class="control-btn">↑</button>
+    <button id="down" class="control-btn">↓</button>
+    <button id="left" class="control-btn">←</button>
+    <button id="right" class="control-btn">→</button>
+  </div>
+
+  <!-- ミニマップ -->
+  <div id="minimap">
+
+    <img
+      id="miniMapImage"
+      src="map.png"
+      alt="Mini Map"
+    >
+
+    <div id="miniPlayer"></div>
+
+    <button id="closeMap">×</button>
 
   </div>
 
-  <canvas id="collisionCanvas"></canvas>
+  <button id="mapToggle">
+    MAP
+  </button>
 
-  <script>
-    const map = document.getElementById('map');
-    const boat = document.getElementById('boat');
+</div>
 
-    const canvas = document.getElementById('collisionCanvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+<script>
 
-    let x = 33;
-    let y = 24.5;
+  const game =
+    document.getElementById('game');
 
-    const speed = 0.12;
+  const world =
+    document.getElementById('world');
 
-    let mapReady = false;
+  const map =
+    document.getElementById('map');
 
-    const keys = {
-      up: false,
-      down: false,
-      left: false,
-      right: false
-    };
+  const boat =
+    document.getElementById('boat');
 
-    map.addEventListener('load', () => {
-      canvas.width = map.naturalWidth;
-      canvas.height = map.naturalHeight;
+  const miniPlayer =
+    document.getElementById('miniPlayer');
 
-      ctx.drawImage(map, 0, 0);
+  const minimap =
+    document.getElementById('minimap');
 
-      mapReady = true;
-    });
+  const closeMap =
+    document.getElementById('closeMap');
 
-    function isWater(percentX, percentY) {
+  const mapToggle =
+    document.getElementById('mapToggle');
 
-      if (!mapReady) return true;
 
-      const px = Math.floor(
-        (percentX / 100) * canvas.width
-      );
+  /*
+    プレイヤーの位置。
 
-      const py = Math.floor(
-        (percentY / 100) * canvas.height
-      );
+    0〜100%の座標で管理する。
+    これならメインマップと
+    ミニマップを同じ位置情報で動かせる。
+  */
 
-      if (
-        px < 0 ||
-        py < 0 ||
-        px >= canvas.width ||
-        py >= canvas.height
-      ) {
-        return false;
-      }
+  let playerX = 33;
+  let playerY = 24.5;
 
-      const pixel = ctx.getImageData(
-        px,
-        py,
-        1,
-        1
-      ).data;
 
-      const r = pixel[0];
-      const g = pixel[1];
-      const b = pixel[2];
+  /*
+    移動速度
+  */
+
+  const speed = 0.12;
+
+
+  const keys = {
+
+    up: false,
+    down: false,
+    left: false,
+    right: false
+
+  };
+
+
+  /*
+    地図をプレイヤー位置に合わせて移動
+  */
+
+  function updateWorld() {
+
+    if (
+      !map.offsetWidth ||
+      !map.offsetHeight
+    ) {
+      return;
+    }
+
+
+    /*
+      プレイヤー位置を
+      地図上のピクセルに変換
+    */
+
+    const playerPixelX =
+      map.offsetWidth *
+      playerX / 100;
+
+    const playerPixelY =
+      map.offsetHeight *
+      playerY / 100;
+
+
+    /*
+      船が画面中央に来るよう
+      地図を逆方向へ移動
+    */
+
+    const worldX =
+      game.clientWidth / 2 -
+      playerPixelX;
+
+    const worldY =
+      game.clientHeight / 2 -
+      playerPixelY;
+
+
+    world.style.left =
+      worldX + 'px';
+
+    world.style.top =
+      worldY + 'px';
+
+
+    /*
+      ミニマップの赤点
+    */
+
+    miniPlayer.style.left =
+      playerX + '%';
+
+    miniPlayer.style.top =
+      playerY + '%';
+
+  }
+
+
+  /*
+    毎フレームの処理
+  */
+
+  function update() {
+
+    let dx = 0;
+    let dy = 0;
+
+
+    if (keys.up) {
+      dy -= speed;
+    }
+
+    if (keys.down) {
+      dy += speed;
+    }
+
+    if (keys.left) {
+      dx -= speed;
+    }
+
+    if (keys.right) {
+      dx += speed;
+    }
+
+
+    if (
+      dx !== 0 ||
+      dy !== 0
+    ) {
+
+      playerX += dx;
+      playerY += dy;
+
 
       /*
-        湖の青色を判定。
-        青〜水色ならtrue。
+        地図の外へ出ない
       */
 
-      return (
-        b > 110 &&
-        g > 70 &&
-        b > r + 20 &&
-        b > g * 0.85
-      );
+      playerX =
+        Math.max(
+          0,
+          Math.min(100, playerX)
+        );
+
+      playerY =
+        Math.max(
+          0,
+          Math.min(100, playerY)
+        );
+
+
+      /*
+        船の向き
+      */
+
+      const angle =
+        Math.atan2(dy, dx) *
+        180 / Math.PI +
+        180;
+
+
+      boat.style.transform =
+        `translate(-50%, -50%) rotate(${angle}deg)`;
+
     }
 
-    function updateBoat() {
 
-      let dx = 0;
-      let dy = 0;
+    updateWorld();
 
-      if (keys.up) dy -= speed;
-      if (keys.down) dy += speed;
-      if (keys.left) dx -= speed;
-      if (keys.right) dx += speed;
+    requestAnimationFrame(update);
 
-      if (dx !== 0 || dy !== 0) {
+  }
 
-        const newX = x + dx;
-        const newY = y + dy;
 
-        /*
-          X方向だけ動けるか確認
-        */
+  /*
+    キーボード操作
+  */
 
-        if (isWater(newX, y)) {
-          x = newX;
-        }
-
-        /*
-          Y方向だけ動けるか確認
-        */
-
-        if (isWater(x, newY)) {
-          y = newY;
-        }
-
-        /*
-          船首を進行方向へ向ける
-        */
-
-        const angle =
-          Math.atan2(dy, dx) * 180 / Math.PI + 180;
-
-        boat.style.transform =
-          `translate(-50%, -50%) rotate(${angle}deg)`;
-      }
-
-      boat.style.left = x + '%';
-      boat.style.top = y + '%';
-
-      requestAnimationFrame(updateBoat);
-    }
-
-    document.addEventListener('keydown', (e) => {
+  document.addEventListener(
+    'keydown',
+    (e) => {
 
       if (e.key === 'ArrowUp') {
         keys.up = true;
-        e.preventDefault();
       }
 
       if (e.key === 'ArrowDown') {
         keys.down = true;
-        e.preventDefault();
       }
 
       if (e.key === 'ArrowLeft') {
         keys.left = true;
-        e.preventDefault();
       }
 
       if (e.key === 'ArrowRight') {
         keys.right = true;
+      }
+
+      if (
+        e.key.startsWith('Arrow')
+      ) {
         e.preventDefault();
       }
-    });
 
-    document.addEventListener('keyup', (e) => {
+    }
+  );
 
-      if (e.key === 'ArrowUp') keys.up = false;
-      if (e.key === 'ArrowDown') keys.down = false;
-      if (e.key === 'ArrowLeft') keys.left = false;
-      if (e.key === 'ArrowRight') keys.right = false;
-    });
 
-    function setupButton(id, direction) {
+  document.addEventListener(
+    'keyup',
+    (e) => {
 
-      const btn = document.getElementById(id);
+      if (e.key === 'ArrowUp') {
+        keys.up = false;
+      }
 
-      btn.addEventListener('pointerdown', (e) => {
+      if (e.key === 'ArrowDown') {
+        keys.down = false;
+      }
+
+      if (e.key === 'ArrowLeft') {
+        keys.left = false;
+      }
+
+      if (e.key === 'ArrowRight') {
+        keys.right = false;
+      }
+
+    }
+  );
+
+
+  /*
+    スマホ・マウス操作
+  */
+
+  function setupButton(
+    id,
+    direction
+  ) {
+
+    const button =
+      document.getElementById(id);
+
+
+    button.addEventListener(
+      'pointerdown',
+      (e) => {
+
         e.preventDefault();
+
         keys[direction] = true;
-      });
 
-      btn.addEventListener('pointerup', () => {
-        keys[direction] = false;
-      });
+      }
+    );
 
-      btn.addEventListener('pointerleave', () => {
-        keys[direction] = false;
-      });
 
-      btn.addEventListener('pointercancel', () => {
-        keys[direction] = false;
-      });
+    function stop() {
+
+      keys[direction] = false;
+
     }
 
-    setupButton('up', 'up');
-    setupButton('down', 'down');
-    setupButton('left', 'left');
-    setupButton('right', 'right');
 
-    updateBoat();
-  </script>
+    button.addEventListener(
+      'pointerup',
+      stop
+    );
+
+    button.addEventListener(
+      'pointerleave',
+      stop
+    );
+
+    button.addEventListener(
+      'pointercancel',
+      stop
+    );
+
+  }
+
+
+  setupButton(
+    'up',
+    'up'
+  );
+
+  setupButton(
+    'down',
+    'down'
+  );
+
+  setupButton(
+    'left',
+    'left'
+  );
+
+  setupButton(
+    'right',
+    'right'
+  );
+
+
+  /*
+    ミニマップを閉じる
+  */
+
+  closeMap.addEventListener(
+    'click',
+    () => {
+
+      minimap.style.display =
+        'none';
+
+      mapToggle.style.display =
+        'block';
+
+    }
+  );
+
+
+  /*
+    ミニマップを開く
+  */
+
+  mapToggle.addEventListener(
+    'click',
+    () => {
+
+      minimap.style.display =
+        'block';
+
+      mapToggle.style.display =
+        'none';
+
+    }
+  );
+
+
+  /*
+    地図読み込み後開始
+  */
+
+  map.addEventListener(
+    'load',
+    () => {
+
+      updateWorld();
+
+    }
+  );
+
+
+  update();
+
+</script>
 
 </body>
 </html>
