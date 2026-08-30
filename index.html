@@ -413,9 +413,9 @@ let returnPromptBlocked = false;
 ========================= */
 
 const speeds = {
-  low: 0.04,
-  normal: 0.07,
-  high: 0.12
+  low: 2.4,
+  normal: 4.2,
+  high: 7.2
 };
 
 let speedMode = "normal";
@@ -430,9 +430,9 @@ let speed = speeds.normal;
 let energy = 100;
 
 const energyUse = {
-  low: 0.003,
-  normal: 0.008,
-  high: 0.02
+  low: 0.18,
+  normal: 0.48,
+  high: 1.2
 };
 
 
@@ -765,7 +765,20 @@ function failTrip() {
    ゲームループ
 ========================= */
 
-function gameLoop() {
+let previousFrameTime = null;
+
+function gameLoop(currentFrameTime) {
+
+  if (previousFrameTime === null) {
+    previousFrameTime = currentFrameTime;
+  }
+
+  const deltaSeconds = Math.min(
+    (currentFrameTime - previousFrameTime) / 1000,
+    0.05
+  );
+
+  previousFrameTime = currentFrameTime;
 
   let dx = 0;
   let dy = 0;
@@ -776,19 +789,19 @@ function gameLoop() {
   if (!returnPromptOpen) {
 
     if (keys.up) {
-      dy -= speed;
+      dy -= 1;
     }
 
     if (keys.down) {
-      dy += speed;
+      dy += 1;
     }
 
     if (keys.left) {
-      dx -= speed;
+      dx -= 1;
     }
 
     if (keys.right) {
-      dx += speed;
+      dx += 1;
     }
 
 
@@ -796,6 +809,24 @@ function gameLoop() {
       dx !== 0 ||
       dy !== 0
     ) {
+
+      /*
+        斜め移動でも速度を一定にする
+      */
+      const directionLength =
+        Math.hypot(dx, dy);
+
+      dx =
+        dx /
+        directionLength *
+        speed *
+        deltaSeconds;
+
+      dy =
+        dy /
+        directionLength *
+        speed *
+        deltaSeconds;
 
       const nextX =
         playerX + dx;
@@ -822,7 +853,8 @@ function gameLoop() {
           ENERGY消費
         */
         energy -=
-          energyUse[speedMode];
+          energyUse[speedMode] *
+          deltaSeconds;
 
 
         const dockDistance =
@@ -971,6 +1003,21 @@ document.addEventListener(
     if (e.key === "ArrowRight") {
       keys.right = false;
     }
+  }
+);
+
+
+/*
+  ウィンドウを切り替えたときに
+  入力が残らないようにする
+*/
+window.addEventListener(
+  "blur",
+  () => {
+    keys.up = false;
+    keys.down = false;
+    keys.left = false;
+    keys.right = false;
   }
 );
 
@@ -1142,7 +1189,9 @@ window.addEventListener(
 
 updateEnergy();
 
-gameLoop();
+requestAnimationFrame(
+  gameLoop
+);
 
 </script>
 
