@@ -20,6 +20,8 @@
       display: flex;
       justify-content: center;
       align-items: center;
+      position: relative;
+      background: #000;
     }
 
     #world {
@@ -32,30 +34,175 @@
       height: 100%;
       width: auto;
       display: block;
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
     #boat {
       position: absolute;
 
-  left: 33%;
+      /* 今決めたスタート位置 */
+      left: 33%;
+      top: 24.5%;
 
-  top: 24.5%;
+      /* 今決めた船サイズ */
+      width: 2.75%;
 
-  width: 2.75%;
+      transform: translate(-50%, -50%);
+      transform-origin: center;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
 
-  transform: translate(-50%, -50%);
+    #controls {
+      position: absolute;
+      left: 20px;
+      bottom: 20px;
+      width: 150px;
+      height: 150px;
+      z-index: 10;
+    }
 
-  pointer-events: none;
+    .control-btn {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border: none;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.8);
+      font-size: 24px;
+      font-weight: bold;
+      touch-action: none;
+    }
+
+    #up {
+      left: 50px;
+      top: 0;
+    }
+
+    #down {
+      left: 50px;
+      bottom: 0;
+    }
+
+    #left {
+      left: 0;
+      top: 50px;
+    }
+
+    #right {
+      right: 0;
+      top: 50px;
     }
   </style>
 </head>
 
 <body>
+
   <div id="game">
+
     <div id="world">
       <img id="map" src="map.png" alt="Game Map">
       <img id="boat" src="boat.png" alt="Boat">
     </div>
+
+    <div id="controls">
+      <button id="up" class="control-btn">↑</button>
+      <button id="down" class="control-btn">↓</button>
+      <button id="left" class="control-btn">←</button>
+      <button id="right" class="control-btn">→</button>
+    </div>
+
   </div>
+
+  <script>
+    const boat = document.getElementById('boat');
+
+    let x = 33;
+    let y = 24.5;
+
+    const speed = 0.15;
+
+    const keys = {
+      up: false,
+      down: false,
+      left: false,
+      right: false
+    };
+
+    function updateBoat() {
+
+      let dx = 0;
+      let dy = 0;
+
+      if (keys.up) dy -= speed;
+      if (keys.down) dy += speed;
+      if (keys.left) dx -= speed;
+      if (keys.right) dx += speed;
+
+      x += dx;
+      y += dy;
+
+      x = Math.max(0, Math.min(100, x));
+      y = Math.max(0, Math.min(100, y));
+
+      boat.style.left = x + '%';
+      boat.style.top = y + '%';
+
+      if (dx !== 0 || dy !== 0) {
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+        boat.style.transform =
+          `translate(-50%, -50%) rotate(${angle}deg)`;
+      }
+
+      requestAnimationFrame(updateBoat);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') keys.up = true;
+      if (e.key === 'ArrowDown') keys.down = true;
+      if (e.key === 'ArrowLeft') keys.left = true;
+      if (e.key === 'ArrowRight') keys.right = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'ArrowUp') keys.up = false;
+      if (e.key === 'ArrowDown') keys.down = false;
+      if (e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'ArrowRight') keys.right = false;
+    });
+
+    function setupButton(id, direction) {
+
+      const btn = document.getElementById(id);
+
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        keys[direction] = true;
+      });
+
+      btn.addEventListener('pointerup', () => {
+        keys[direction] = false;
+      });
+
+      btn.addEventListener('pointerleave', () => {
+        keys[direction] = false;
+      });
+
+      btn.addEventListener('pointercancel', () => {
+        keys[direction] = false;
+      });
+    }
+
+    setupButton('up', 'up');
+    setupButton('down', 'down');
+    setupButton('left', 'left');
+    setupButton('right', 'right');
+
+    updateBoat();
+  </script>
+
 </body>
 </html>
