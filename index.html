@@ -40,16 +40,13 @@
 
     #boat {
       position: absolute;
-
-      /* 今決めたスタート位置 */
       left: 33%;
       top: 24.5%;
-
-      /* 今決めた船サイズ */
       width: 2.75%;
 
-      transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%) rotate(180deg);
       transform-origin: center;
+
       pointer-events: none;
       user-select: none;
       -webkit-user-drag: none;
@@ -95,6 +92,10 @@
       right: 0;
       top: 50px;
     }
+
+    #collisionCanvas {
+      display: none;
+    }
   </style>
 </head>
 
@@ -116,13 +117,21 @@
 
   </div>
 
+  <canvas id="collisionCanvas"></canvas>
+
   <script>
+    const map = document.getElementById('map');
     const boat = document.getElementById('boat');
+
+    const canvas = document.getElementById('collisionCanvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     let x = 33;
     let y = 24.5;
 
-    const speed = 0.15;
+    const speed = 0.12;
+
+    let mapReady = false;
 
     const keys = {
       up: false,
@@ -130,6 +139,60 @@
       left: false,
       right: false
     };
+
+    map.addEventListener('load', () => {
+      canvas.width = map.naturalWidth;
+      canvas.height = map.naturalHeight;
+
+      ctx.drawImage(map, 0, 0);
+
+      mapReady = true;
+    });
+
+    function isWater(percentX, percentY) {
+
+      if (!mapReady) return true;
+
+      const px = Math.floor(
+        (percentX / 100) * canvas.width
+      );
+
+      const py = Math.floor(
+        (percentY / 100) * canvas.height
+      );
+
+      if (
+        px < 0 ||
+        py < 0 ||
+        px >= canvas.width ||
+        py >= canvas.height
+      ) {
+        return false;
+      }
+
+      const pixel = ctx.getImageData(
+        px,
+        py,
+        1,
+        1
+      ).data;
+
+      const r = pixel[0];
+      const g = pixel[1];
+      const b = pixel[2];
+
+      /*
+        湖の青色を判定。
+        青〜水色ならtrue。
+      */
+
+      return (
+        b > 110 &&
+        g > 70 &&
+        b > r + 20 &&
+        b > g * 0.85
+      );
+    }
 
     function updateBoat() {
 
@@ -141,33 +204,69 @@
       if (keys.left) dx -= speed;
       if (keys.right) dx += speed;
 
-      x += dx;
-      y += dy;
-
-      x = Math.max(0, Math.min(100, x));
-      y = Math.max(0, Math.min(100, y));
-
-      boat.style.left = x + '%';
-      boat.style.top = y + '%';
-
       if (dx !== 0 || dy !== 0) {
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI + 180;
+
+        const newX = x + dx;
+        const newY = y + dy;
+
+        /*
+          X方向だけ動けるか確認
+        */
+
+        if (isWater(newX, y)) {
+          x = newX;
+        }
+
+        /*
+          Y方向だけ動けるか確認
+        */
+
+        if (isWater(x, newY)) {
+          y = newY;
+        }
+
+        /*
+          船首を進行方向へ向ける
+        */
+
+        const angle =
+          Math.atan2(dy, dx) * 180 / Math.PI + 180;
 
         boat.style.transform =
           `translate(-50%, -50%) rotate(${angle}deg)`;
       }
 
+      boat.style.left = x + '%';
+      boat.style.top = y + '%';
+
       requestAnimationFrame(updateBoat);
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowUp') keys.up = true;
-      if (e.key === 'ArrowDown') keys.down = true;
-      if (e.key === 'ArrowLeft') keys.left = true;
-      if (e.key === 'ArrowRight') keys.right = true;
+
+      if (e.key === 'ArrowUp') {
+        keys.up = true;
+        e.preventDefault();
+      }
+
+      if (e.key === 'ArrowDown') {
+        keys.down = true;
+        e.preventDefault();
+      }
+
+      if (e.key === 'ArrowLeft') {
+        keys.left = true;
+        e.preventDefault();
+      }
+
+      if (e.key === 'ArrowRight') {
+        keys.right = true;
+        e.preventDefault();
+      }
     });
 
     document.addEventListener('keyup', (e) => {
+
       if (e.key === 'ArrowUp') keys.up = false;
       if (e.key === 'ArrowDown') keys.down = false;
       if (e.key === 'ArrowLeft') keys.left = false;
