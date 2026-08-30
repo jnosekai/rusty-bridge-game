@@ -151,7 +151,7 @@
       boat.style.top = y + '%';
 
       if (dx !== 0 || dy !== 0) {
-        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI + 180;
 
         boat.style.transform =
           `translate(-50%, -50%) rotate(${angle}deg)`;
