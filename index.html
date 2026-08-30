@@ -490,34 +490,40 @@ map.addEventListener(
    水面判定
 ========================= */
 
-function isWater(
-  xPercent,
-  yPercent
-) {
-
-  if (!mapReady) {
-    return true;
+function finishTrip() {
+  if (tripEnding) {
+    return;
   }
-
-  const px =
-    Math.floor(
-      collisionCanvas.width *
-      xPercent / 100
+  tripEnding = true;
+  const returnHome =
+    confirm(
+      "桟橋に帰還しますか？\n\nOK = YES\nキャンセル = NO"
     );
-
-  const py =
-    Math.floor(
-      collisionCanvas.height *
-      yPercent / 100
+  if (returnHome) {
+    alert(
+      "桟橋に帰還！\n\n釣行終了。\n今回の釣果が確定しました。"
     );
+    resetTrip();
+  } else {
+    /*
 
-  if (
-    px < 0 ||
-    py < 0 ||
-    px >= collisionCanvas.width ||
-    py >= collisionCanvas.height
-  ) {
-    return false;
+      NOを選んだら釣行続行
+
+    */
+
+    tripEnding = false;
+
+    /*
+
+      桟橋付近にいる間、
+
+      毎フレーム確認が出ないように
+
+      一度「出船済み」を解除
+
+    */
+
+    hasLeftDock = false;
   }
 
   const pixel =
