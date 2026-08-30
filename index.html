@@ -236,146 +236,526 @@
 
 <script>
   const game = document.getElementById("game");
+
   const world = document.getElementById("world");
+
   const map = document.getElementById("map");
+
   const boat = document.getElementById("boat");
 
   const miniPlayer = document.getElementById("miniPlayer");
+
   const minimap = document.getElementById("minimap");
+
   const closeMap = document.getElementById("closeMap");
+
   const showMap = document.getElementById("showMap");
 
+  /* 水面判定用 */
+
+  const collisionCanvas = document.createElement("canvas");
+
+  const collisionCtx = collisionCanvas.getContext(
+
+    "2d",
+
+    { willReadFrequently: true }
+
+  );
+
+  let mapReady = false;
+
   /* スタート位置 */
+
   let playerX = 33;
+
   let playerY = 24.5;
 
   /* 移動速度 */
+
   const speed = 0.07;
 
   const keys = {
+
     up: false,
+
     down: false,
+
     left: false,
+
     right: false
+
   };
 
+  /* =========================
+
+     マップ読み込み
+
+  ========================= */
+
+  map.addEventListener("load", () => {
+
+    collisionCanvas.width = map.naturalWidth;
+
+    collisionCanvas.height = map.naturalHeight;
+
+    collisionCtx.drawImage(
+
+      map,
+
+      0,
+
+      0,
+
+      collisionCanvas.width,
+
+      collisionCanvas.height
+
+    );
+
+    mapReady = true;
+
+    updateWorld();
+
+  });
+
+  /* =========================
+
+     水面判定
+
+     船の中心点だけを見る
+
+  ========================= */
+
+  function isWater(xPercent, yPercent) {
+
+    if (!mapReady) {
+
+      return true;
+
+    }
+
+    const px = Math.floor(
+
+      collisionCanvas.width *
+
+      xPercent / 100
+
+    );
+
+    const py = Math.floor(
+
+      collisionCanvas.height *
+
+      yPercent / 100
+
+    );
+
+    if (
+
+      px < 0 ||
+
+      py < 0 ||
+
+      px >= collisionCanvas.width ||
+
+      py >= collisionCanvas.height
+
+    ) {
+
+      return false;
+
+    }
+
+    const pixel =
+
+      collisionCtx.getImageData(
+
+        px,
+
+        py,
+
+        1,
+
+        1
+
+      ).data;
+
+    const r = pixel[0];
+
+    const g = pixel[1];
+
+    const b = pixel[2];
+
+    /*
+
+      水面の青を判定。
+
+      森の緑や岸の茶色はfalse。
+
+    */
+
+    return (
+
+      b > 100 &&
+
+      b > r * 1.25 &&
+
+      b > g * 1.05
+
+    );
+
+  }
+
+  /* =========================
+
+     画面更新
+
+  ========================= */
+
   function updateWorld() {
+
     if (!map.offsetWidth || !map.offsetHeight) {
+
       return;
+
     }
 
     const playerPixelX =
-      map.offsetWidth * playerX / 100;
+
+      map.offsetWidth *
+
+      playerX / 100;
 
     const playerPixelY =
-      map.offsetHeight * playerY / 100;
 
-    /* ボートが画面中央になるように地図を動かす */
+      map.offsetHeight *
+
+      playerY / 100;
+
     world.style.left =
-      (game.clientWidth / 2 - playerPixelX) + "px";
+
+      (
+
+        game.clientWidth / 2 -
+
+        playerPixelX
+
+      ) + "px";
 
     world.style.top =
-      (game.clientHeight / 2 - playerPixelY) + "px";
 
-    /* ミニマップの赤点 */
-    miniPlayer.style.left = playerX + "%";
-    miniPlayer.style.top = playerY + "%";
+      (
+
+        game.clientHeight / 2 -
+
+        playerPixelY
+
+      ) + "px";
+
+    miniPlayer.style.left =
+
+      playerX + "%";
+
+    miniPlayer.style.top =
+
+      playerY + "%";
+
   }
 
+  /* =========================
+
+     ゲームループ
+
+  ========================= */
+
   function gameLoop() {
+
     let dx = 0;
+
     let dy = 0;
 
     if (keys.up) dy -= speed;
+
     if (keys.down) dy += speed;
+
     if (keys.left) dx -= speed;
+
     if (keys.right) dx += speed;
 
     if (dx !== 0 || dy !== 0) {
 
-      playerX += dx;
-      playerY += dy;
+      const nextX = playerX + dx;
 
-      playerX =
-        Math.max(0, Math.min(100, playerX));
+      const nextY = playerY + dy;
 
-      playerY =
-        Math.max(0, Math.min(100, playerY));
+      /*
 
-      /* ボートの向き */
+        船の中心点が水面なら移動
+
+      */
+
+      if (
+
+        isWater(
+
+          nextX,
+
+          nextY
+
+        )
+
+      ) {
+
+        playerX = nextX;
+
+        playerY = nextY;
+
+      }
+
+      /*
+
+        船の向きは入力方向に合わせる
+
+      */
+
       const angle =
-        Math.atan2(dy, dx) * 180 / Math.PI + 180;
+
+        Math.atan2(
+
+          dy,
+
+          dx
+
+        ) *
+
+        180 /
+
+        Math.PI +
+
+        180;
 
       boat.style.transform =
+
         `translate(-50%, -50%) rotate(${angle}deg)`;
+
     }
 
     updateWorld();
 
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(
+
+      gameLoop
+
+    );
+
   }
 
-  /* PC操作 */
-  document.addEventListener("keydown", (e) => {
+  /* =========================
 
-    if (e.key === "ArrowUp") keys.up = true;
-    if (e.key === "ArrowDown") keys.down = true;
-    if (e.key === "ArrowLeft") keys.left = true;
-    if (e.key === "ArrowRight") keys.right = true;
+     PC操作
 
-    if (e.key.startsWith("Arrow")) {
-      e.preventDefault();
+  ========================= */
+
+  document.addEventListener(
+
+    "keydown",
+
+    (e) => {
+
+      if (e.key === "ArrowUp") {
+
+        keys.up = true;
+
+      }
+
+      if (e.key === "ArrowDown") {
+
+        keys.down = true;
+
+      }
+
+      if (e.key === "ArrowLeft") {
+
+        keys.left = true;
+
+      }
+
+      if (e.key === "ArrowRight") {
+
+        keys.right = true;
+
+      }
+
+      if (
+
+        e.key.startsWith("Arrow")
+
+      ) {
+
+        e.preventDefault();
+
+      }
+
     }
-  });
 
-  document.addEventListener("keyup", (e) => {
+  );
 
-    if (e.key === "ArrowUp") keys.up = false;
-    if (e.key === "ArrowDown") keys.down = false;
-    if (e.key === "ArrowLeft") keys.left = false;
-    if (e.key === "ArrowRight") keys.right = false;
-  });
+  document.addEventListener(
 
-  /* スマホ操作 */
-  function setupButton(id, direction) {
+    "keyup",
+
+    (e) => {
+
+      if (e.key === "ArrowUp") {
+
+        keys.up = false;
+
+      }
+
+      if (e.key === "ArrowDown") {
+
+        keys.down = false;
+
+      }
+
+      if (e.key === "ArrowLeft") {
+
+        keys.left = false;
+
+      }
+
+      if (e.key === "ArrowRight") {
+
+        keys.right = false;
+
+      }
+
+    }
+
+  );
+
+  /* =========================
+
+     スマホ操作
+
+  ========================= */
+
+  function setupButton(
+
+    id,
+
+    direction
+
+  ) {
 
     const button =
+
       document.getElementById(id);
 
-    button.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      keys[direction] = true;
-    });
+    button.addEventListener(
+
+      "pointerdown",
+
+      (e) => {
+
+        e.preventDefault();
+
+        keys[direction] = true;
+
+      }
+
+    );
 
     const stop = () => {
+
       keys[direction] = false;
+
     };
 
-    button.addEventListener("pointerup", stop);
-    button.addEventListener("pointerleave", stop);
-    button.addEventListener("pointercancel", stop);
+    button.addEventListener(
+
+      "pointerup",
+
+      stop
+
+    );
+
+    button.addEventListener(
+
+      "pointerleave",
+
+      stop
+
+    );
+
+    button.addEventListener(
+
+      "pointercancel",
+
+      stop
+
+    );
+
   }
 
   setupButton("up", "up");
+
   setupButton("down", "down");
+
   setupButton("left", "left");
+
   setupButton("right", "right");
 
-  /* ミニマップを閉じる */
-  closeMap.addEventListener("click", () => {
-    minimap.style.display = "none";
-    showMap.style.display = "block";
-  });
+  /* =========================
 
-  /* ミニマップを表示 */
-  showMap.addEventListener("click", () => {
-    minimap.style.display = "block";
-    showMap.style.display = "none";
-  });
+     ミニマップ
 
-  map.addEventListener("load", updateWorld);
+  ========================= */
 
-  window.addEventListener("resize", updateWorld);
+  closeMap.addEventListener(
+
+    "click",
+
+    () => {
+
+      minimap.style.display =
+
+        "none";
+
+      showMap.style.display =
+
+        "block";
+
+    }
+
+  );
+
+  showMap.addEventListener(
+
+    "click",
+
+    () => {
+
+      minimap.style.display =
+
+        "block";
+
+      showMap.style.display =
+
+        "none";
+
+    }
+
+  );
+
+  window.addEventListener(
+
+    "resize",
+
+    updateWorld
+
+  );
 
   gameLoop();
 </script>
