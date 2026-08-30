@@ -26,7 +26,7 @@ html, body {
   background: #000;
 }
 
-/* 大きなフィールド */
+/* フィールド */
 #world {
   position: absolute;
   left: 0;
@@ -55,7 +55,7 @@ html, body {
   pointer-events: none;
 }
 
-/* 操作ボタン */
+/* 操作 */
 #controls {
   position: absolute;
   left: 20px;
@@ -97,7 +97,7 @@ html, body {
   top: 50px;
 }
 
-/* 速度切替 */
+/* 速度 */
 #speedControls {
   position: absolute;
   right: 20px;
@@ -207,7 +207,58 @@ html, body {
   z-index: 40;
 }
 
+/* 帰還確認画面 */
+#returnModal {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.55);
+  z-index: 100;
+}
+
+#returnBox {
+  width: 280px;
+  padding: 24px;
+  background: white;
+  border-radius: 12px;
+  text-align: center;
+  font-family: sans-serif;
+}
+
+#returnTitle {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+#returnButtons {
+  display: flex;
+  gap: 10px;
+}
+
+.returnBtn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#returnYes {
+  background: #111;
+  color: white;
+}
+
+#returnNo {
+  background: #ddd;
+  color: #111;
+}
+
 @media (max-width: 600px) {
+
   #boat {
     width: 36px;
   }
@@ -245,14 +296,12 @@ html, body {
 
   <img id="boat" src="boat.png" alt="Boat">
 
-  <!-- 速度 -->
   <div id="speedControls">
     <button id="lowSpeed" class="speedBtn">LOW</button>
     <button id="normalSpeed" class="speedBtn active">NORMAL</button>
     <button id="highSpeed" class="speedBtn">HIGH</button>
   </div>
 
-  <!-- ENERGY -->
   <div id="energyPanel">
     <div id="energyText">ENERGY 100%</div>
 
@@ -261,7 +310,6 @@ html, body {
     </div>
   </div>
 
-  <!-- 操作 -->
   <div id="controls">
     <button id="up" class="control">↑</button>
     <button id="down" class="control">↓</button>
@@ -269,7 +317,6 @@ html, body {
     <button id="right" class="control">→</button>
   </div>
 
-  <!-- ミニマップ -->
   <div id="minimap">
     <img id="miniMapImage" src="map.jpg" alt="Mini Map">
     <div id="miniPlayer"></div>
@@ -278,9 +325,31 @@ html, body {
 
   <button id="showMap">MAP</button>
 
+  <!-- 帰還確認 -->
+  <div id="returnModal">
+    <div id="returnBox">
+
+      <div id="returnTitle">
+        桟橋に帰還しますか？
+      </div>
+
+      <div id="returnButtons">
+        <button id="returnNo" class="returnBtn">
+          NO
+        </button>
+
+        <button id="returnYes" class="returnBtn">
+          YES
+        </button>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <script>
+
 const game = document.getElementById("game");
 const world = document.getElementById("world");
 const map = document.getElementById("map");
@@ -294,34 +363,55 @@ const showMap = document.getElementById("showMap");
 const energyText = document.getElementById("energyText");
 const energyBarInner = document.getElementById("energyBarInner");
 
-/* 水面判定 */
-const collisionCanvas = document.createElement("canvas");
+const returnModal = document.getElementById("returnModal");
+const returnYes = document.getElementById("returnYes");
+const returnNo = document.getElementById("returnNo");
+
+
+/* =========================
+   水面判定
+========================= */
+
+const collisionCanvas =
+  document.createElement("canvas");
 
 const collisionCtx =
-  collisionCanvas.getContext("2d", {
-    willReadFrequently: true
-  });
+  collisionCanvas.getContext(
+    "2d",
+    { willReadFrequently: true }
+  );
 
 let mapReady = false;
 
-/* 桟橋位置 */
+
+/* =========================
+   桟橋・スタート位置
+========================= */
+
 const dockX = 33.3;
 const dockY = 24.3;
 
 let playerX = dockX;
 let playerY = dockY;
 
-/* 桟橋判定 */
+
+/* 桟橋判定範囲 */
 const dockReturnRadius = 0.45;
+
+/* 出船したとみなす距離 */
 const dockLeaveRadius = 0.8;
 
 let hasLeftDock = false;
-let tripEnding = false;
 
-/* NOを選んだあと連続表示しないため */
+let returnPromptOpen = false;
+
 let returnPromptBlocked = false;
 
-/* 速度 */
+
+/* =========================
+   速度
+========================= */
+
 const speeds = {
   low: 0.04,
   normal: 0.07,
@@ -329,9 +419,14 @@ const speeds = {
 };
 
 let speedMode = "normal";
+
 let speed = speeds.normal;
 
-/* ENERGY */
+
+/* =========================
+   ENERGY
+========================= */
+
 let energy = 100;
 
 const energyUse = {
@@ -340,6 +435,11 @@ const energyUse = {
   high: 0.02
 };
 
+
+/* =========================
+   操作
+========================= */
+
 const keys = {
   up: false,
   down: false,
@@ -347,11 +447,18 @@ const keys = {
   right: false
 };
 
-/* マップ読み込み */
-map.addEventListener("load", () => {
 
-  collisionCanvas.width = map.naturalWidth;
-  collisionCanvas.height = map.naturalHeight;
+/* =========================
+   マップ読み込み
+========================= */
+
+function prepareMap() {
+
+  collisionCanvas.width =
+    map.naturalWidth;
+
+  collisionCanvas.height =
+    map.naturalHeight;
 
   collisionCtx.drawImage(
     map,
@@ -364,24 +471,50 @@ map.addEventListener("load", () => {
   mapReady = true;
 
   updateWorld();
-});
+}
 
-/* 水面判定 */
-function isWater(xPercent, yPercent) {
+
+/*
+  キャッシュ済み画像でも
+  必ず読み込む
+*/
+if (map.complete) {
+
+  prepareMap();
+
+} else {
+
+  map.addEventListener(
+    "load",
+    prepareMap
+  );
+}
+
+
+/* =========================
+   水面判定
+========================= */
+
+function isWater(
+  xPercent,
+  yPercent
+) {
 
   if (!mapReady) {
     return true;
   }
 
-  const px = Math.floor(
-    collisionCanvas.width *
-    xPercent / 100
-  );
+  const px =
+    Math.floor(
+      collisionCanvas.width *
+      xPercent / 100
+    );
 
-  const py = Math.floor(
-    collisionCanvas.height *
-    yPercent / 100
-  );
+  const py =
+    Math.floor(
+      collisionCanvas.height *
+      yPercent / 100
+    );
 
   if (
     px < 0 ||
@@ -411,11 +544,18 @@ function isWater(xPercent, yPercent) {
   );
 }
 
-/* 桟橋までの距離 */
+
+/* =========================
+   桟橋との距離
+========================= */
+
 function distanceFromDock() {
 
-  const dx = playerX - dockX;
-  const dy = playerY - dockY;
+  const dx =
+    playerX - dockX;
+
+  const dy =
+    playerY - dockY;
 
   return Math.sqrt(
     dx * dx +
@@ -423,16 +563,21 @@ function distanceFromDock() {
   );
 }
 
-/* ENERGY表示 */
+
+/* =========================
+   ENERGY表示
+========================= */
+
 function updateEnergy() {
 
-  energy = Math.max(
-    0,
-    Math.min(
-      100,
-      energy
-    )
-  );
+  energy =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        energy
+      )
+    );
 
   energyText.textContent =
     "ENERGY " +
@@ -443,7 +588,11 @@ function updateEnergy() {
     energy + "%";
 }
 
-/* マップ更新 */
+
+/* =========================
+   マップ更新
+========================= */
+
 function updateWorld() {
 
   if (
@@ -480,7 +629,11 @@ function updateWorld() {
     playerY + "%";
 }
 
-/* 釣行リセット */
+
+/* =========================
+   釣行リセット
+========================= */
+
 function resetTrip() {
 
   playerX = dockX;
@@ -489,105 +642,159 @@ function resetTrip() {
   energy = 100;
 
   hasLeftDock = false;
-  tripEnding = false;
+
+  returnPromptOpen = false;
+
   returnPromptBlocked = false;
 
-  changeSpeed("normal");
+  returnModal.style.display =
+    "none";
 
   keys.up = false;
   keys.down = false;
   keys.left = false;
   keys.right = false;
+
+  changeSpeed("normal");
 
   updateEnergy();
   updateWorld();
 }
 
-/* 桟橋帰還確認 */
-function askReturnToDock() {
 
-  if (tripEnding) {
+/* =========================
+   帰還確認
+========================= */
+
+function openReturnPrompt() {
+
+  if (
+    returnPromptOpen ||
+    returnPromptBlocked
+  ) {
     return;
   }
 
-  tripEnding = true;
+  returnPromptOpen = true;
 
-  /* キー入力を一度止める */
   keys.up = false;
   keys.down = false;
   keys.left = false;
   keys.right = false;
 
-  const answer = confirm(
-    "桟橋に帰還しますか？\n\nOK = YES\nキャンセル = NO"
-  );
+  returnModal.style.display =
+    "flex";
+}
 
-  if (answer) {
+
+/* YES */
+returnYes.addEventListener(
+  "click",
+  () => {
+
+    /*
+      後でここで
+      今回釣った魚を正式記録する
+    */
 
     alert(
-      "桟橋に帰還！\n\n釣行終了。\n今回の釣果が確定しました。"
+      "釣行終了！\n今回の釣果が確定しました。"
     );
 
     resetTrip();
-
-  } else {
-
-    /*
-      NOならそのまま続行
-    */
-    tripEnding = false;
-
-    /*
-      桟橋付近にいる間、
-      再度メッセージを出さない
-    */
-    returnPromptBlocked = true;
   }
-}
+);
 
-/* ENERGY切れ */
+
+/* NO */
+returnNo.addEventListener(
+  "click",
+  () => {
+
+    returnPromptOpen = false;
+
+    returnPromptBlocked = true;
+
+    returnModal.style.display =
+      "none";
+  }
+);
+
+
+/* =========================
+   ENERGY切れ
+========================= */
+
 function failTrip() {
 
-  if (tripEnding) {
-    return;
-  }
-
-  tripEnding = true;
-
   energy = 0;
+
+  updateEnergy();
 
   keys.up = false;
   keys.down = false;
   keys.left = false;
   keys.right = false;
-
-  updateEnergy();
 
   alert(
     "ENERGY切れ！\n\n釣行失敗。\n今回釣った魚はすべて無効です。"
   );
 
+  /*
+    後でここで
+    今回釣った魚を全部削除
+  */
+
   resetTrip();
 }
 
-/* ゲームループ */
+
+/* =========================
+   ゲームループ
+========================= */
+
 function gameLoop() {
 
   let dx = 0;
   let dy = 0;
 
-  if (!tripEnding) {
+  /*
+    帰還確認中は船を止める
+  */
+  if (!returnPromptOpen) {
 
-    if (keys.up) dy -= speed;
-    if (keys.down) dy += speed;
-    if (keys.left) dx -= speed;
-    if (keys.right) dx += speed;
+    if (keys.up) {
+      dy -= speed;
+    }
 
-    if (dx !== 0 || dy !== 0) {
+    if (keys.down) {
+      dy += speed;
+    }
 
-      const nextX = playerX + dx;
-      const nextY = playerY + dy;
+    if (keys.left) {
+      dx -= speed;
+    }
 
+    if (keys.right) {
+      dx += speed;
+    }
+
+
+    if (
+      dx !== 0 ||
+      dy !== 0
+    ) {
+
+      const nextX =
+        playerX + dx;
+
+      const nextY =
+        playerY + dy;
+
+
+      /*
+        船の中心が水面なら移動
+      */
       if (
         isWater(
           nextX,
@@ -598,13 +805,22 @@ function gameLoop() {
         playerX = nextX;
         playerY = nextY;
 
-        /* ENERGY消費 */
-        energy -= energyUse[speedMode];
+
+        /*
+          ENERGY消費
+        */
+        energy -=
+          energyUse[speedMode];
+
 
         const dockDistance =
           distanceFromDock();
 
-        /* 桟橋から離れた */
+
+        /*
+          桟橋から離れたら
+          出船成立
+        */
         if (
           !hasLeftDock &&
           dockDistance >
@@ -614,10 +830,11 @@ function gameLoop() {
           hasLeftDock = true;
         }
 
+
         /*
-          NOを選んだ後、
-          一度桟橋から離れたら
-          次回また帰還確認を出せる
+          NOを押したあと
+          一度桟橋から離れれば
+          再び帰還確認可能
         */
         if (
           returnPromptBlocked &&
@@ -628,8 +845,9 @@ function gameLoop() {
           returnPromptBlocked = false;
         }
 
+
         /*
-          桟橋に戻ったら確認
+          桟橋に戻った
         */
         if (
           hasLeftDock &&
@@ -638,20 +856,26 @@ function gameLoop() {
           dockReturnRadius
         ) {
 
-          askReturnToDock();
+          openReturnPrompt();
         }
 
-        /* ENERGY 0 */
+
+        /*
+          ENERGY切れ
+        */
         if (
           energy <= 0 &&
-          !tripEnding
+          !returnPromptOpen
         ) {
 
           failTrip();
         }
       }
 
-      /* 船の向き */
+
+      /*
+        船の向き
+      */
       const angle =
         Math.atan2(
           dy,
@@ -666,7 +890,9 @@ function gameLoop() {
     }
   }
 
+
   updateEnergy();
+
   updateWorld();
 
   requestAnimationFrame(
@@ -674,12 +900,16 @@ function gameLoop() {
   );
 }
 
-/* PC操作 */
+
+/* =========================
+   PC操作
+========================= */
+
 document.addEventListener(
   "keydown",
   (e) => {
 
-    if (tripEnding) {
+    if (returnPromptOpen) {
       return;
     }
 
@@ -709,6 +939,7 @@ document.addEventListener(
   }
 );
 
+
 document.addEventListener(
   "keyup",
   (e) => {
@@ -731,7 +962,11 @@ document.addEventListener(
   }
 );
 
-/* スマホ操作 */
+
+/* =========================
+   スマホ操作
+========================= */
+
 function setupButton(
   id,
   direction
@@ -746,7 +981,7 @@ function setupButton(
 
       e.preventDefault();
 
-      if (tripEnding) {
+      if (returnPromptOpen) {
         return;
       }
 
@@ -774,44 +1009,72 @@ function setupButton(
   );
 }
 
+
 setupButton("up", "up");
 setupButton("down", "down");
 setupButton("left", "left");
 setupButton("right", "right");
 
-/* 速度切替 */
+
+/* =========================
+   速度切替
+========================= */
+
 const lowButton =
-  document.getElementById("lowSpeed");
+  document.getElementById(
+    "lowSpeed"
+  );
 
 const normalButton =
-  document.getElementById("normalSpeed");
+  document.getElementById(
+    "normalSpeed"
+  );
 
 const highButton =
-  document.getElementById("highSpeed");
+  document.getElementById(
+    "highSpeed"
+  );
+
 
 function changeSpeed(mode) {
 
   speedMode = mode;
-  speed = speeds[mode];
+
+  speed =
+    speeds[mode];
 
   document
-    .querySelectorAll(".speedBtn")
-    .forEach(button => {
-      button.classList.remove("active");
-    });
+    .querySelectorAll(
+      ".speedBtn"
+    )
+    .forEach(
+      button => {
+
+        button.classList.remove(
+          "active"
+        );
+      }
+    );
 
   if (mode === "low") {
-    lowButton.classList.add("active");
+    lowButton.classList.add(
+      "active"
+    );
   }
 
   if (mode === "normal") {
-    normalButton.classList.add("active");
+    normalButton.classList.add(
+      "active"
+    );
   }
 
   if (mode === "high") {
-    highButton.classList.add("active");
+    highButton.classList.add(
+      "active"
+    );
   }
 }
+
 
 lowButton.addEventListener(
   "click",
@@ -828,7 +1091,11 @@ highButton.addEventListener(
   () => changeSpeed("high")
 );
 
-/* ミニマップ */
+
+/* =========================
+   ミニマップ
+========================= */
+
 closeMap.addEventListener(
   "click",
   () => {
@@ -840,6 +1107,7 @@ closeMap.addEventListener(
       "block";
   }
 );
+
 
 showMap.addEventListener(
   "click",
@@ -853,14 +1121,17 @@ showMap.addEventListener(
   }
 );
 
+
 window.addEventListener(
   "resize",
   updateWorld
 );
 
+
 updateEnergy();
 
 gameLoop();
+
 </script>
 
 </body>
