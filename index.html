@@ -133,6 +133,48 @@ html, body {
   color: black;
 }
 
+/* ENERGY */
+#energyPanel {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+
+  width: 180px;
+
+  padding: 10px;
+
+  background: rgba(0,0,0,0.65);
+  border: 2px solid white;
+  border-radius: 8px;
+
+  color: white;
+  font-family: sans-serif;
+
+  z-index: 50;
+}
+
+#energyText {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+#energyBarOuter {
+  width: 100%;
+  height: 14px;
+
+  border: 1px solid white;
+  background: rgba(255,255,255,0.15);
+
+  overflow: hidden;
+}
+
+#energyBarInner {
+  width: 100%;
+  height: 100%;
+  background: white;
+}
+
 /* ミニマップ */
 #minimap {
   position: absolute;
@@ -212,6 +254,12 @@ html, body {
     top: 10px;
   }
 
+  #energyPanel {
+    right: 10px;
+    top: 60px;
+    width: 150px;
+  }
+
   .speedBtn {
     padding: 8px;
     font-size: 11px;
@@ -235,6 +283,15 @@ html, body {
     <button id="lowSpeed" class="speedBtn">LOW</button>
     <button id="normalSpeed" class="speedBtn active">NORMAL</button>
     <button id="highSpeed" class="speedBtn">HIGH</button>
+  </div>
+
+  <!-- ENERGY -->
+  <div id="energyPanel">
+    <div id="energyText">ENERGY 100%</div>
+
+    <div id="energyBarOuter">
+      <div id="energyBarInner"></div>
+    </div>
   </div>
 
   <!-- 操作 -->
@@ -268,8 +325,12 @@ const minimap = document.getElementById("minimap");
 const closeMap = document.getElementById("closeMap");
 const showMap = document.getElementById("showMap");
 
+const energyText = document.getElementById("energyText");
+const energyBarInner = document.getElementById("energyBarInner");
+
 /* 水面判定 */
 const collisionCanvas = document.createElement("canvas");
+
 const collisionCtx =
   collisionCanvas.getContext("2d", {
     willReadFrequently: true
@@ -277,7 +338,7 @@ const collisionCtx =
 
 let mapReady = false;
 
-/* ここは今決めた出船位置に変更してください */
+/* 出船位置 */
 let playerX = 33.3;
 let playerY = 24.3;
 
@@ -288,7 +349,17 @@ const speeds = {
   high: 0.12
 };
 
+let speedMode = "normal";
 let speed = speeds.normal;
+
+/* ENERGY */
+let energy = 100;
+
+const energyUse = {
+  low: 0.003,
+  normal: 0.008,
+  high: 0.02
+};
 
 const keys = {
   up: false,
@@ -364,6 +435,18 @@ function isWater(xPercent, yPercent) {
   );
 }
 
+/* ENERGY表示 */
+function updateEnergy() {
+
+  energy = Math.max(0, Math.min(100, energy));
+
+  energyText.textContent =
+    "ENERGY " + Math.floor(energy) + "%";
+
+  energyBarInner.style.width =
+    energy + "%";
+}
+
 /* 地図位置更新 */
 function updateWorld() {
 
@@ -417,13 +500,22 @@ function gameLoop() {
     const nextY =
       playerY + dy;
 
-    /* 中心が水面の場合のみ移動 */
     if (isWater(nextX, nextY)) {
+
       playerX = nextX;
       playerY = nextY;
+
+      /* 実際に動いた時だけENERGY消費 */
+      energy -= energyUse[speedMode];
+
+      if (energy <= 0) {
+
+        energy = 0;
+
+        changeSpeed("low");
+      }
     }
 
-    /* 船首を進行方向へ */
     const angle =
       Math.atan2(dy, dx) *
       180 / Math.PI +
@@ -433,6 +525,7 @@ function gameLoop() {
       `translate(-50%, -50%) rotate(${angle}deg)`;
   }
 
+  updateEnergy();
   updateWorld();
 
   requestAnimationFrame(gameLoop);
@@ -496,6 +589,12 @@ const highButton =
 
 function changeSpeed(mode) {
 
+  /* ENERGYゼロならLOW以外は禁止 */
+  if (energy <= 0 && mode !== "low") {
+    return;
+  }
+
+  speedMode = mode;
   speed = speeds[mode];
 
   document
@@ -549,6 +648,8 @@ window.addEventListener(
   "resize",
   updateWorld
 );
+
+updateEnergy();
 
 gameLoop();
 
