@@ -404,6 +404,42 @@ html, body {
   letter-spacing: 0.06em;
 }
 
+#catchPanel {
+  display: none;
+  min-height: 270px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+#catchImageSlot {
+  display: none;
+  width: min(260px, 72vw);
+  min-height: 110px;
+}
+
+#catchPanelTitle {
+  color: #8dd047;
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.55);
+}
+
+#catchSpecies {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#catchSize {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
 #fishButton,
 #hitContinue {
   width: min(280px, 100%);
@@ -545,6 +581,14 @@ html, body {
       <div id="gaugeZoneResult" aria-live="polite"></div>
       <div id="catchResult" aria-live="polite"></div>
 
+      <!-- 将来、魚画像を追加できる独立した釣果画面 -->
+      <section id="catchPanel" aria-live="polite">
+        <div id="catchImageSlot" aria-hidden="true"></div>
+        <div id="catchPanelTitle">FISH ON!</div>
+        <div id="catchSpecies">BLACK BASS</div>
+        <div id="catchSize"></div>
+      </section>
+
       <button id="fishButton">FISH!</button>
       <button id="hitContinue">CONTINUE</button>
     </div>
@@ -572,12 +616,17 @@ const returnYes = document.getElementById("returnYes");
 const returnNo = document.getElementById("returnNo");
 
 const hitModal = document.getElementById("hitModal");
+const hitTitle = document.getElementById("hitTitle");
+const hitSubtitle = document.getElementById("hitSubtitle");
 const timingGauge = document.getElementById("timingGauge");
 const gaugeMarker = document.getElementById("gaugeMarker");
 const hitLogo = document.getElementById("hitLogo");
 const hitLogoImage = document.getElementById("hitLogoImage");
 const gaugeZoneResult = document.getElementById("gaugeZoneResult");
 const catchResult = document.getElementById("catchResult");
+const catchPanel = document.getElementById("catchPanel");
+const catchSpecies = document.getElementById("catchSpecies");
+const catchSize = document.getElementById("catchSize");
 const fishButton = document.getElementById("fishButton");
 const hitContinue = document.getElementById("hitContinue");
 
@@ -677,16 +726,18 @@ const fishingGrid = {
 
 const defaultFishingAreaSettings = {
   hitRate: 0.12,
-  fishSizeTrend: "mixed",
-  largeFishRate: 0.05
+  sizeMin: 20,
+  sizeMax: 45,
+  bigFishRate: 0.05
 };
 
 /*
   例:
   "3:5": {
     hitRate: 0.25,
-    fishSizeTrend: "large",
-    largeFishRate: 0.15
+    sizeMin: 35,
+    sizeMax: 55,
+    bigFishRate: 0.15
   }
 */
 const fishingAreaOverrides = {};
@@ -695,6 +746,7 @@ const fishingAreaCache = new Map();
 
 let currentFishingAreaKey = null;
 let hitPromptOpen = false;
+let activeFishingArea = null;
 
 
 /* =========================
@@ -948,6 +1000,77 @@ function getFishingArea(
   return fishingAreaCache.get(
     coordinates.key
   );
+}
+
+
+/* =========================
+   魚サイズ生成
+========================= */
+
+function randomBetween(
+  minimum,
+  maximum
+) {
+
+  return (
+    minimum +
+    Math.random() *
+    (
+      maximum -
+      minimum
+    )
+  );
+}
+
+
+function generateFishCatch(
+  area
+) {
+
+  const isBigFish =
+    Math.random() <
+    area.bigFishRate;
+
+  let sizeMinimum =
+    area.sizeMin;
+
+  let sizeMaximum =
+    area.sizeMax;
+
+  if (isBigFish) {
+
+    const normalSizeRange =
+      Math.max(
+        1,
+        area.sizeMax -
+        area.sizeMin
+      );
+
+    sizeMinimum =
+      area.sizeMax +
+      0.1;
+
+    sizeMaximum =
+      area.sizeMax +
+      normalSizeRange *
+      0.6;
+  }
+
+  const sizeCm =
+    Math.round(
+      randomBetween(
+        sizeMinimum,
+        sizeMaximum
+      ) *
+      10
+    ) /
+    10;
+
+  return {
+    species: "BLACK BASS",
+    sizeCm,
+    isBigFish
+  };
 }
 
 
@@ -1387,11 +1510,32 @@ function startFishingGauge() {
   gaugeMarkerAngle = 180;
   gaugePreviousFrameTime = null;
 
+  hitTitle.style.display =
+    "block";
+
+  hitSubtitle.style.display =
+    "block";
+
+  timingGauge.style.display =
+    "block";
+
   gaugeZoneResult.textContent = "";
+  gaugeZoneResult.style.display =
+    "block";
   gaugeZoneResult.style.color =
     "white";
 
   catchResult.textContent = "";
+  catchResult.style.display =
+    "block";
+
+  catchPanel.style.display =
+    "none";
+
+  catchSpecies.textContent =
+    "BLACK BASS";
+
+  catchSize.textContent = "";
 
   fishButton.style.display =
     "inline-block";
@@ -1452,6 +1596,38 @@ function getGaugeZone(
 }
 
 
+function showCatchPanel(
+  caughtFish
+) {
+
+  hitTitle.style.display =
+    "none";
+
+  hitSubtitle.style.display =
+    "none";
+
+  timingGauge.style.display =
+    "none";
+
+  gaugeZoneResult.style.display =
+    "none";
+
+  catchResult.style.display =
+    "none";
+
+  catchSpecies.textContent =
+    caughtFish.species;
+
+  catchSize.textContent =
+    caughtFish.sizeCm
+      .toFixed(1) +
+    " cm";
+
+  catchPanel.style.display =
+    "flex";
+}
+
+
 function stopFishingGauge() {
 
   if (
@@ -1493,15 +1669,29 @@ function stopFishingGauge() {
   gaugeZoneResult.style.color =
     fishingGaugeColors[zone];
 
-  catchResult.textContent =
-    caught ?
-      "CATCH!" :
+  if (caught) {
+
+    const caughtFish =
+      generateFishCatch(
+        activeFishingArea ||
+        getFishingArea(
+          playerX,
+          playerY
+        )
+      );
+
+    showCatchPanel(
+      caughtFish
+    );
+
+  } else {
+
+    catchResult.textContent =
       "MISS…";
 
-  catchResult.style.color =
-    caught ?
-      "#8dd047" :
+    catchResult.style.color =
       "#d8e0e5";
+  }
 
   fishButton.style.display =
     "none";
@@ -1527,9 +1717,29 @@ function resetFishingSequence() {
   gaugeAnimationFrameId = null;
   gaugePreviousFrameTime = null;
   fishingSequenceState = "idle";
+  activeFishingArea = null;
+
+  hitTitle.style.display =
+    "block";
+
+  hitSubtitle.style.display =
+    "block";
+
+  timingGauge.style.display =
+    "block";
 
   gaugeZoneResult.textContent = "";
+  gaugeZoneResult.style.display =
+    "block";
+
   catchResult.textContent = "";
+  catchResult.style.display =
+    "block";
+
+  catchPanel.style.display =
+    "none";
+
+  catchSize.textContent = "";
 
   fishButton.style.display =
     "inline-block";
@@ -1581,6 +1791,7 @@ function checkFishingAreaEntry() {
     Math.random() <
     area.hitRate
   ) {
+    activeFishingArea = area;
     openHitPrompt();
   }
 }
