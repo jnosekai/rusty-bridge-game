@@ -728,13 +728,13 @@ const fishingGaugeColors = {
 */
 const hitLogoSettings = {
   initialState: "normal",
-  widthPercent: 100,
+  widthPercent: 105,
   maxHeightPercent: 92,
   states: {
     normal: {
       imagePath:
-        "15D5A2FD-DC90-480E-9706-04AF54AB0FCE.png",
-      removeConnectedLightBackground:
+        "rogo.png",
+      removeConnectedBackground:
         true
     },
     highExpectation: {
@@ -1040,23 +1040,47 @@ function createTransparentLogoSource(
             let queueStart = 0;
             let queueEnd = 0;
 
-            const isLightPixel =
+            const backgroundColor = [
+              imageData.data[0],
+              imageData.data[1],
+              imageData.data[2]
+            ];
+
+            const isBackgroundPixel =
               (pixelIndex) => {
 
                 const dataIndex =
                   pixelIndex *
                   4;
 
+                const redDifference =
+                  Math.abs(
+                    imageData.data[
+                      dataIndex
+                    ] -
+                    backgroundColor[0]
+                  );
+
+                const greenDifference =
+                  Math.abs(
+                    imageData.data[
+                      dataIndex + 1
+                    ] -
+                    backgroundColor[1]
+                  );
+
+                const blueDifference =
+                  Math.abs(
+                    imageData.data[
+                      dataIndex + 2
+                    ] -
+                    backgroundColor[2]
+                  );
+
                 return (
-                  imageData.data[
-                    dataIndex
-                  ] >= 232 &&
-                  imageData.data[
-                    dataIndex + 1
-                  ] >= 232 &&
-                  imageData.data[
-                    dataIndex + 2
-                  ] >= 232
+                  redDifference <= 12 &&
+                  greenDifference <= 12 &&
+                  blueDifference <= 12
                 );
               };
 
@@ -1065,7 +1089,7 @@ function createTransparentLogoSource(
 
                 if (
                   visited[pixelIndex] ||
-                  !isLightPixel(
+                  !isBackgroundPixel(
                     pixelIndex
                   )
                 ) {
@@ -1222,9 +1246,9 @@ function setHitLogoPresentation(
 
   const removeBackground =
     selectedLogo
-      ?.removeConnectedLightBackground ??
+      ?.removeConnectedBackground ??
     normalLogo
-      .removeConnectedLightBackground;
+      .removeConnectedBackground;
 
   hitLogo.dataset.logoState =
     state;
