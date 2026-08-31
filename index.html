@@ -264,16 +264,17 @@ html, body {
   display: none;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.62);
+  background:
+    radial-gradient(circle at center, rgba(0,70,118,0.28), rgba(0,0,0,0.72));
   z-index: 90;
 }
 
 #hitBox {
-  width: min(320px, calc(100% - 40px));
-  padding: 32px 24px 24px;
-  background: rgba(10,24,34,0.96);
-  border: 3px solid white;
-  border-radius: 14px;
+  width: min(440px, calc(100% - 32px));
+  padding: 22px 24px 24px;
+  background: rgba(5,30,48,0.92);
+  border: 2px solid rgba(255,255,255,0.92);
+  border-radius: 18px;
   color: white;
   text-align: center;
   font-family: sans-serif;
@@ -281,21 +282,118 @@ html, body {
 }
 
 #hitTitle {
-  margin-bottom: 22px;
-  font-size: 46px;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.5);
+}
+
+#hitSubtitle {
+  margin: 8px 0 16px;
+  color: rgba(255,255,255,0.84);
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#timingGauge {
+  position: relative;
+  width: min(270px, 70vw);
+  aspect-ratio: 1;
+  margin: 0 auto 16px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: var(--gauge-zones);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.2),
+    0 0 28px rgba(32,170,255,0.28);
+}
+
+#timingGauge::after {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: rgba(4,34,53,0.96);
+  z-index: 1;
+}
+
+#gaugeMarker {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  transform: rotate(0deg);
+  z-index: 4;
+  pointer-events: none;
+}
+
+#gaugeMarker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 14%;
+  height: 12px;
+  border-radius: 999px;
+  background: white;
+  box-shadow:
+    0 0 7px 3px white,
+    0 0 16px 7px rgba(255,255,255,0.72);
+  transform: translateX(-50%);
+}
+
+#hitLogo {
+  position: absolute;
+  inset: 29%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8dd047;
+  font-size: clamp(16px, 4vw, 24px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+  z-index: 3;
+}
+
+#gaugeZoneResult {
+  min-height: 25px;
+  margin-bottom: 5px;
+  font-size: 20px;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
 
+#catchResult {
+  min-height: 40px;
+  margin-bottom: 12px;
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#fishButton,
 #hitContinue {
-  width: 100%;
+  width: min(280px, 100%);
   padding: 12px;
-  border: none;
-  border-radius: 8px;
+  border: 2px solid white;
+  border-radius: 10px;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#fishButton {
+  background: rgba(3,39,64,0.92);
+  color: white;
+}
+
+#hitContinue {
+  display: none;
   background: white;
   color: #111;
-  font-size: 16px;
-  font-weight: bold;
 }
 
 @media (max-width: 600px) {
@@ -322,6 +420,18 @@ html, body {
   .speedBtn {
     padding: 8px;
     font-size: 11px;
+  }
+
+  #hitBox {
+    padding: 18px 16px;
+  }
+
+  #hitTitle {
+    font-size: 36px;
+  }
+
+  #timingGauge {
+    width: min(230px, 64vw);
   }
 }
 </style>
@@ -387,10 +497,23 @@ html, body {
     </div>
   </div>
 
-  <!-- 仮のHIT画面（フッキングゲーム実装まで使用） -->
+  <!-- FISHタイミングゲージ -->
   <div id="hitModal" role="dialog" aria-modal="true" aria-labelledby="hitTitle">
     <div id="hitBox">
       <div id="hitTitle">HIT!</div>
+      <div id="hitSubtitle">魚が食いついた！</div>
+
+      <div id="timingGauge" aria-label="FISH timing gauge">
+        <div id="gaugeMarker"></div>
+
+        <!-- 正式ロゴ画像へ差し替える独立領域 -->
+        <div id="hitLogo">GREEN<br>BOAT</div>
+      </div>
+
+      <div id="gaugeZoneResult" aria-live="polite"></div>
+      <div id="catchResult" aria-live="polite"></div>
+
+      <button id="fishButton">FISH!</button>
       <button id="hitContinue">CONTINUE</button>
     </div>
   </div>
@@ -417,6 +540,12 @@ const returnYes = document.getElementById("returnYes");
 const returnNo = document.getElementById("returnNo");
 
 const hitModal = document.getElementById("hitModal");
+const timingGauge = document.getElementById("timingGauge");
+const gaugeMarker = document.getElementById("gaugeMarker");
+const hitLogo = document.getElementById("hitLogo");
+const gaugeZoneResult = document.getElementById("gaugeZoneResult");
+const catchResult = document.getElementById("catchResult");
+const fishButton = document.getElementById("fishButton");
 const hitContinue = document.getElementById("hitContinue");
 
 
@@ -533,6 +662,37 @@ const fishingAreaCache = new Map();
 
 let currentFishingAreaKey = null;
 let hitPromptOpen = false;
+
+
+/* =========================
+   FISHタイミングゲージ設定
+========================= */
+
+/*
+  ゲージ調整はここだけを変更する。
+  goodZoneDegrees はBEST両側それぞれの幅。
+*/
+const fishingGaugeSettings = {
+  markerSpeedDegreesPerSecond: 180,
+  bestZoneDegrees: 48,
+  goodZoneDegrees: 64,
+  successRates: {
+    best: 0.95,
+    good: 0.70,
+    normal: 0.25
+  }
+};
+
+const fishingGaugeColors = {
+  best: "#55ad3d",
+  good: "#ecc51b",
+  normal: "#c64a32"
+};
+
+let fishingSequenceState = "idle";
+let gaugeMarkerAngle = 180;
+let gaugePreviousFrameTime = null;
+let gaugeAnimationFrameId = null;
 
 
 /* =========================
@@ -740,6 +900,270 @@ function clearMovementInput() {
 }
 
 
+/*
+  中央ロゴの表示処理。
+  ゲージ判定とは独立しており、将来は画像や色演出に差し替えられる。
+*/
+function setHitLogoPresentation({
+  text = "GREEN BOAT",
+  color = "#8dd047"
+} = {}) {
+
+  hitLogo.textContent = text;
+  hitLogo.style.color = color;
+}
+
+
+function applyFishingGaugeZones() {
+
+  const bestWidth =
+    fishingGaugeSettings
+      .bestZoneDegrees;
+
+  const goodWidth =
+    fishingGaugeSettings
+      .goodZoneDegrees;
+
+  const startAngle =
+    -bestWidth / 2;
+
+  const firstGoodEnd =
+    bestWidth +
+    goodWidth;
+
+  const secondGoodStart =
+    360 -
+    goodWidth;
+
+  timingGauge.style.setProperty(
+    "--gauge-zones",
+    `conic-gradient(
+      from ${startAngle}deg,
+      ${fishingGaugeColors.best} 0deg ${bestWidth}deg,
+      ${fishingGaugeColors.good} ${bestWidth}deg ${firstGoodEnd}deg,
+      ${fishingGaugeColors.normal} ${firstGoodEnd}deg ${secondGoodStart}deg,
+      ${fishingGaugeColors.good} ${secondGoodStart}deg 360deg
+    )`
+  );
+}
+
+
+function updateGaugeMarker() {
+
+  gaugeMarker.style.transform =
+    `rotate(${gaugeMarkerAngle}deg)`;
+}
+
+
+function runGaugeAnimation(
+  currentFrameTime
+) {
+
+  if (
+    fishingSequenceState !==
+    "gauge"
+  ) {
+    return;
+  }
+
+  if (
+    gaugePreviousFrameTime ===
+    null
+  ) {
+    gaugePreviousFrameTime =
+      currentFrameTime;
+  }
+
+  const deltaSeconds = Math.min(
+    (
+      currentFrameTime -
+      gaugePreviousFrameTime
+    ) /
+    1000,
+    0.05
+  );
+
+  gaugePreviousFrameTime =
+    currentFrameTime;
+
+  gaugeMarkerAngle =
+    (
+      gaugeMarkerAngle +
+      fishingGaugeSettings
+        .markerSpeedDegreesPerSecond *
+      deltaSeconds
+    ) %
+    360;
+
+  updateGaugeMarker();
+
+  gaugeAnimationFrameId =
+    requestAnimationFrame(
+      runGaugeAnimation
+    );
+}
+
+
+function startFishingGauge() {
+
+  fishingSequenceState =
+    "gauge";
+
+  gaugeMarkerAngle = 180;
+  gaugePreviousFrameTime = null;
+
+  gaugeZoneResult.textContent = "";
+  gaugeZoneResult.style.color =
+    "white";
+
+  catchResult.textContent = "";
+
+  fishButton.style.display =
+    "inline-block";
+
+  hitContinue.style.display =
+    "none";
+
+  setHitLogoPresentation();
+  applyFishingGaugeZones();
+  updateGaugeMarker();
+
+  gaugeAnimationFrameId =
+    requestAnimationFrame(
+      runGaugeAnimation
+    );
+}
+
+
+function getGaugeZone(
+  markerAngle
+) {
+
+  const signedAngle =
+    (
+      (
+        markerAngle +
+        180
+      ) %
+      360
+    ) -
+    180;
+
+  const distanceFromBest =
+    Math.abs(signedAngle);
+
+  const bestHalfWidth =
+    fishingGaugeSettings
+      .bestZoneDegrees /
+    2;
+
+  if (
+    distanceFromBest <=
+    bestHalfWidth
+  ) {
+    return "best";
+  }
+
+  if (
+    distanceFromBest <=
+    bestHalfWidth +
+    fishingGaugeSettings
+      .goodZoneDegrees
+  ) {
+    return "good";
+  }
+
+  return "normal";
+}
+
+
+function stopFishingGauge() {
+
+  if (
+    fishingSequenceState !==
+    "gauge"
+  ) {
+    return;
+  }
+
+  fishingSequenceState =
+    "result";
+
+  if (
+    gaugeAnimationFrameId !==
+    null
+  ) {
+    cancelAnimationFrame(
+      gaugeAnimationFrameId
+    );
+  }
+
+  gaugeAnimationFrameId = null;
+
+  const zone = getGaugeZone(
+    gaugeMarkerAngle
+  );
+
+  const successRate =
+    fishingGaugeSettings
+      .successRates[zone];
+
+  const caught =
+    Math.random() <
+    successRate;
+
+  gaugeZoneResult.textContent =
+    zone.toUpperCase();
+
+  gaugeZoneResult.style.color =
+    fishingGaugeColors[zone];
+
+  catchResult.textContent =
+    caught ?
+      "CATCH!" :
+      "MISS…";
+
+  catchResult.style.color =
+    caught ?
+      "#8dd047" :
+      "#d8e0e5";
+
+  fishButton.style.display =
+    "none";
+
+  hitContinue.style.display =
+    "inline-block";
+
+  hitContinue.focus();
+}
+
+
+function resetFishingSequence() {
+
+  if (
+    gaugeAnimationFrameId !==
+    null
+  ) {
+    cancelAnimationFrame(
+      gaugeAnimationFrameId
+    );
+  }
+
+  gaugeAnimationFrameId = null;
+  gaugePreviousFrameTime = null;
+  fishingSequenceState = "idle";
+
+  gaugeZoneResult.textContent = "";
+  catchResult.textContent = "";
+
+  fishButton.style.display =
+    "inline-block";
+
+  hitContinue.style.display =
+    "none";
+}
+
+
 function openHitPrompt() {
 
   if (
@@ -756,7 +1180,9 @@ function openHitPrompt() {
   hitModal.style.display =
     "flex";
 
-  hitContinue.focus();
+  startFishingGauge();
+
+  fishButton.focus();
 }
 
 
@@ -785,10 +1211,27 @@ function checkFishingAreaEntry() {
 }
 
 
+fishButton.addEventListener(
+  "click",
+  stopFishingGauge
+);
+
+
 hitContinue.addEventListener(
   "click",
   () => {
+
+    if (
+      fishingSequenceState !==
+      "result"
+    ) {
+      return;
+    }
+
+    resetFishingSequence();
+
     hitPromptOpen = false;
+
     hitModal.style.display =
       "none";
   }
@@ -879,6 +1322,8 @@ function resetTrip() {
   returnPromptBlocked = false;
 
   hitPromptOpen = false;
+
+  resetFishingSequence();
 
   currentFishingAreaKey =
     getFishingArea(
@@ -1203,9 +1648,21 @@ document.addEventListener(
   "keydown",
   (e) => {
 
+    if (hitPromptOpen) {
+
+      if (e.code === "Space") {
+        e.preventDefault();
+
+        if (!e.repeat) {
+          stopFishingGauge();
+        }
+      }
+
+      return;
+    }
+
     if (
-      returnPromptOpen ||
-      hitPromptOpen
+      returnPromptOpen
     ) {
       return;
     }
