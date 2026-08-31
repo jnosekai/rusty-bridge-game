@@ -345,17 +345,23 @@ html, body {
 
 #hitLogo {
   position: absolute;
-  inset: 29%;
+  inset: 26%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #8dd047;
-  font-size: clamp(16px, 4vw, 24px);
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: 0.04em;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+  overflow: hidden;
+  border-radius: 50%;
+  background: white;
   z-index: 3;
+}
+
+#hitLogoImage {
+  display: block;
+  width: var(--hit-logo-width, 110%);
+  max-width: none;
+  max-height: var(--hit-logo-max-height, 90%);
+  object-fit: contain;
+  object-position: center;
 }
 
 #gaugeZoneResult {
@@ -506,8 +512,10 @@ html, body {
       <div id="timingGauge" aria-label="FISH timing gauge">
         <div id="gaugeMarker"></div>
 
-        <!-- 正式ロゴ画像へ差し替える独立領域 -->
-        <div id="hitLogo">GREEN<br>BOAT</div>
+        <!-- ゲージ判定から独立したロゴ表示領域 -->
+        <div id="hitLogo" data-logo-state="normal">
+          <img id="hitLogoImage" alt="GREEN BOAT">
+        </div>
       </div>
 
       <div id="gaugeZoneResult" aria-live="polite"></div>
@@ -543,6 +551,7 @@ const hitModal = document.getElementById("hitModal");
 const timingGauge = document.getElementById("timingGauge");
 const gaugeMarker = document.getElementById("gaugeMarker");
 const hitLogo = document.getElementById("hitLogo");
+const hitLogoImage = document.getElementById("hitLogoImage");
 const gaugeZoneResult = document.getElementById("gaugeZoneResult");
 const catchResult = document.getElementById("catchResult");
 const fishButton = document.getElementById("fishButton");
@@ -687,6 +696,28 @@ const fishingGaugeColors = {
   best: "#55ad3d",
   good: "#ecc51b",
   normal: "#c64a32"
+};
+
+/*
+  ロゴのパス・サイズ・状態はここだけで変更する。
+  将来の色違い画像は states に追加する。
+*/
+const hitLogoSettings = {
+  initialState: "normal",
+  widthPercent: 120,
+  maxHeightPercent: 92,
+  states: {
+    normal: {
+      imagePath:
+        "15D5A2FD-DC90-480E-9706-04AF54AB0FCE.png"
+    },
+    highExpectation: {
+      imagePath: null
+    },
+    ultraRare: {
+      imagePath: null
+    }
+  }
 };
 
 let fishingSequenceState = "idle";
@@ -904,13 +935,41 @@ function clearMovementInput() {
   中央ロゴの表示処理。
   ゲージ判定とは独立しており、将来は画像や色演出に差し替えられる。
 */
-function setHitLogoPresentation({
-  text = "GREEN BOAT",
-  color = "#8dd047"
-} = {}) {
+function setHitLogoPresentation(
+  state =
+    hitLogoSettings.initialState
+) {
 
-  hitLogo.textContent = text;
-  hitLogo.style.color = color;
+  const normalLogo =
+    hitLogoSettings
+      .states.normal;
+
+  const selectedLogo =
+    hitLogoSettings
+      .states[state];
+
+  const imagePath =
+    selectedLogo?.imagePath ||
+    normalLogo.imagePath;
+
+  hitLogo.dataset.logoState =
+    state;
+
+  hitLogo.style.setProperty(
+    "--hit-logo-width",
+    hitLogoSettings.widthPercent +
+    "%"
+  );
+
+  hitLogo.style.setProperty(
+    "--hit-logo-max-height",
+    hitLogoSettings
+      .maxHeightPercent +
+    "%"
+  );
+
+  hitLogoImage.src = imagePath;
+  hitLogoImage.alt = "GREEN BOAT";
 }
 
 
