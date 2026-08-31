@@ -272,7 +272,8 @@ html, body {
 #hitBox {
   width: min(440px, calc(100% - 32px));
   padding: 22px 24px 24px;
-  background: rgba(5,30,48,0.92);
+  background: rgba(5,30,48,0.18);
+  backdrop-filter: blur(0.5px);
   border: 2px solid rgba(255,255,255,0.92);
   border-radius: 18px;
   color: white;
@@ -282,7 +283,7 @@ html, body {
 }
 
 #hitTitle {
-  font-size: 44px;
+  font-size: 50px;
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -292,7 +293,7 @@ html, body {
 #hitSubtitle {
   margin: 8px 0 16px;
   color: rgba(255,255,255,0.84);
-  font-size: 14px;
+  font-size: 17px;
   font-weight: bold;
 }
 
@@ -303,10 +304,31 @@ html, body {
   margin: 0 auto 16px;
   border: 3px solid white;
   border-radius: 50%;
-  background: var(--gauge-zones);
+  background: transparent;
   box-shadow:
     0 0 0 2px rgba(0,0,0,0.2),
     0 0 28px rgba(32,170,255,0.28);
+}
+
+#timingGauge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--gauge-zones);
+  -webkit-mask:
+    radial-gradient(
+      circle,
+      transparent 0 59%,
+      #000 60%
+    );
+  mask:
+    radial-gradient(
+      circle,
+      transparent 0 59%,
+      #000 60%
+    );
+  z-index: 0;
 }
 
 #timingGauge::after {
@@ -315,7 +337,7 @@ html, body {
   inset: 20%;
   border: 3px solid white;
   border-radius: 50%;
-  background: white;
+  background: rgba(0,0,0,0.04);
   z-index: 1;
 }
 
@@ -345,13 +367,13 @@ html, body {
 
 #hitLogo {
   position: absolute;
-  inset: 26%;
+  inset: 22%;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border-radius: 50%;
-  background: white;
+  background: transparent;
   z-index: 3;
 }
 
@@ -362,6 +384,8 @@ html, body {
   max-height: var(--hit-logo-max-height, 90%);
   object-fit: contain;
   object-position: center;
+  filter:
+    drop-shadow(0 2px 3px rgba(0,0,0,0.28));
 }
 
 #gaugeZoneResult {
@@ -433,7 +457,7 @@ html, body {
   }
 
   #hitTitle {
-    font-size: 36px;
+    font-size: 42px;
   }
 
   #timingGauge {
@@ -709,7 +733,9 @@ const hitLogoSettings = {
   states: {
     normal: {
       imagePath:
-        "15D5A2FD-DC90-480E-9706-04AF54AB0FCE.png"
+        "15D5A2FD-DC90-480E-9706-04AF54AB0FCE.png",
+      removeConnectedLightBackground:
+        true
     },
     highExpectation: {
       imagePath: null
@@ -724,6 +750,9 @@ let fishingSequenceState = "idle";
 let gaugeMarkerAngle = 180;
 let gaugePreviousFrameTime = null;
 let gaugeAnimationFrameId = null;
+
+const processedLogoCache =
+  new Map();
 
 
 /* =========================
@@ -935,6 +964,245 @@ function clearMovementInput() {
   中央ロゴの表示処理。
   ゲージ判定とは独立しており、将来は画像や色演出に差し替えられる。
 */
+function createTransparentLogoSource(
+  imagePath
+) {
+
+  if (
+    processedLogoCache.has(
+      imagePath
+    )
+  ) {
+    return processedLogoCache.get(
+      imagePath
+    );
+  }
+
+  const processingPromise =
+    new Promise(
+      (resolve) => {
+
+        const sourceImage =
+          new Image();
+
+        sourceImage.addEventListener(
+          "load",
+          () => {
+
+            const canvas =
+              document.createElement(
+                "canvas"
+              );
+
+            canvas.width =
+              sourceImage.naturalWidth;
+
+            canvas.height =
+              sourceImage.naturalHeight;
+
+            const context =
+              canvas.getContext(
+                "2d",
+                {
+                  willReadFrequently:
+                    true
+                }
+              );
+
+            context.drawImage(
+              sourceImage,
+              0,
+              0
+            );
+
+            const imageData =
+              context.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              );
+
+            const pixelCount =
+              canvas.width *
+              canvas.height;
+
+            const visited =
+              new Uint8Array(
+                pixelCount
+              );
+
+            const queue =
+              new Int32Array(
+                pixelCount
+              );
+
+            let queueStart = 0;
+            let queueEnd = 0;
+
+            const isLightPixel =
+              (pixelIndex) => {
+
+                const dataIndex =
+                  pixelIndex *
+                  4;
+
+                return (
+                  imageData.data[
+                    dataIndex
+                  ] >= 232 &&
+                  imageData.data[
+                    dataIndex + 1
+                  ] >= 232 &&
+                  imageData.data[
+                    dataIndex + 2
+                  ] >= 232
+                );
+              };
+
+            const enqueue =
+              (pixelIndex) => {
+
+                if (
+                  visited[pixelIndex] ||
+                  !isLightPixel(
+                    pixelIndex
+                  )
+                ) {
+                  return;
+                }
+
+                visited[pixelIndex] = 1;
+                queue[queueEnd] =
+                  pixelIndex;
+                queueEnd += 1;
+              };
+
+            for (
+              let x = 0;
+              x < canvas.width;
+              x += 1
+            ) {
+              enqueue(x);
+              enqueue(
+                (
+                  canvas.height -
+                  1
+                ) *
+                canvas.width +
+                x
+              );
+            }
+
+            for (
+              let y = 0;
+              y < canvas.height;
+              y += 1
+            ) {
+              enqueue(
+                y *
+                canvas.width
+              );
+              enqueue(
+                y *
+                canvas.width +
+                canvas.width -
+                1
+              );
+            }
+
+            while (
+              queueStart <
+              queueEnd
+            ) {
+
+              const pixelIndex =
+                queue[queueStart];
+
+              queueStart += 1;
+
+              imageData.data[
+                pixelIndex *
+                4 +
+                3
+              ] = 0;
+
+              const x =
+                pixelIndex %
+                canvas.width;
+
+              if (x > 0) {
+                enqueue(
+                  pixelIndex -
+                  1
+                );
+              }
+
+              if (
+                x <
+                canvas.width -
+                1
+              ) {
+                enqueue(
+                  pixelIndex +
+                  1
+                );
+              }
+
+              if (
+                pixelIndex >=
+                canvas.width
+              ) {
+                enqueue(
+                  pixelIndex -
+                  canvas.width
+                );
+              }
+
+              if (
+                pixelIndex <
+                pixelCount -
+                canvas.width
+              ) {
+                enqueue(
+                  pixelIndex +
+                  canvas.width
+                );
+              }
+            }
+
+            context.putImageData(
+              imageData,
+              0,
+              0
+            );
+
+            resolve(
+              canvas.toDataURL(
+                "image/png"
+              )
+            );
+          }
+        );
+
+        sourceImage.addEventListener(
+          "error",
+          () => resolve(imagePath)
+        );
+
+        sourceImage.src = imagePath;
+      }
+    );
+
+  processedLogoCache.set(
+    imagePath,
+    processingPromise
+  );
+
+  return processingPromise;
+}
+
+
 function setHitLogoPresentation(
   state =
     hitLogoSettings.initialState
@@ -951,6 +1219,12 @@ function setHitLogoPresentation(
   const imagePath =
     selectedLogo?.imagePath ||
     normalLogo.imagePath;
+
+  const removeBackground =
+    selectedLogo
+      ?.removeConnectedLightBackground ??
+    normalLogo
+      .removeConnectedLightBackground;
 
   hitLogo.dataset.logoState =
     state;
@@ -970,6 +1244,24 @@ function setHitLogoPresentation(
 
   hitLogoImage.src = imagePath;
   hitLogoImage.alt = "GREEN BOAT";
+
+  if (removeBackground) {
+
+    createTransparentLogoSource(
+      imagePath
+    ).then(
+      (processedSource) => {
+
+        if (
+          hitLogo.dataset.logoState ===
+          state
+        ) {
+          hitLogoImage.src =
+            processedSource;
+        }
+      }
+    );
+  }
 }
 
 
