@@ -107,6 +107,38 @@ html, body {
   z-index: 50;
 }
 
+/* ゲーム内時計 */
+#gameClock {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 104px;
+  padding: 8px 14px;
+  border: 2px solid white;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.65);
+  color: white;
+  font-family: monospace;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-align: center;
+  z-index: 50;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+#gameClock.late {
+  color: #ffe36a;
+  border-color: #ffe36a;
+}
+
+#gameClock.urgent {
+  color: #fff;
+  border-color: #ff705f;
+  background: rgba(120,20,12,0.78);
+}
+
 .speedBtn {
   padding: 9px 11px;
   border: 2px solid white;
@@ -514,10 +546,12 @@ html, body {
   <img id="boat" src="boat.png" alt="Boat">
 
   <div id="speedControls">
-    <button id="lowSpeed" class="speedBtn">LOW</button>
+    <button id="lowSpeed" class="speedBtn">SLOW</button>
     <button id="normalSpeed" class="speedBtn active">NORMAL</button>
-    <button id="highSpeed" class="speedBtn">HIGH</button>
+    <button id="highSpeed" class="speedBtn">FAST</button>
   </div>
+
+  <div id="gameClock" aria-label="ゲーム内時刻">06:00</div>
 
   <div id="energyPanel">
     <div id="energyText">ENERGY 100%</div>
@@ -610,6 +644,7 @@ const showMap = document.getElementById("showMap");
 
 const energyText = document.getElementById("energyText");
 const energyBarInner = document.getElementById("energyBarInner");
+const gameClock = document.getElementById("gameClock");
 
 const returnModal = document.getElementById("returnModal");
 const returnYes = document.getElementById("returnYes");
@@ -692,11 +727,30 @@ let speed = speeds.normal;
 
 let energy = 100;
 
-const energyUse = {
-  low: 0.18,
-  normal: 0.48,
-  high: 1.2
+const fuelSettings = {
+  normalUsePerSecond: 100 / (12 * 60),
+  speedMultipliers: {
+    low: 0.4,
+    normal: 1.0,
+    high: 1.8
+  }
 };
+
+
+/* =========================
+   ゲーム内時間
+========================= */
+
+const gameTimeSettings = {
+  startMinutes: 6 * 60,
+  endMinutes: 18 * 60,
+  lateWarningMinutes: 17 * 60,
+  urgentWarningMinutes: 17 * 60 + 30,
+  gameMinutesPerRealSecond: 1
+};
+
+let gameMinutes =
+  gameTimeSettings.startMinutes;
 
 
 /* =========================
@@ -1850,6 +1904,84 @@ function updateEnergy() {
 
 
 /* =========================
+   時刻表示・進行
+========================= */
+
+function updateGameClock() {
+
+  const displayMinutes =
+    Math.min(
+      Math.floor(gameMinutes),
+      gameTimeSettings.endMinutes
+    );
+
+  const hours =
+    Math.floor(displayMinutes / 60);
+
+  const minutes =
+    displayMinutes % 60;
+
+  gameClock.textContent =
+    String(hours).padStart(2, "0") +
+    ":" +
+    String(minutes).padStart(2, "0");
+
+  gameClock.classList.toggle(
+    "late",
+    displayMinutes >=
+      gameTimeSettings.lateWarningMinutes
+  );
+
+  gameClock.classList.toggle(
+    "urgent",
+    displayMinutes >=
+      gameTimeSettings.urgentWarningMinutes
+  );
+}
+
+
+function shouldGameTimeAdvance() {
+
+  return !(
+    hitPromptOpen &&
+    fishingSequenceState === "result"
+  );
+}
+
+
+function updateGameTime(deltaSeconds) {
+
+  if (
+    gameMinutes >=
+      gameTimeSettings.endMinutes ||
+    !shouldGameTimeAdvance()
+  ) {
+    return;
+  }
+
+  gameMinutes =
+    Math.min(
+      gameTimeSettings.endMinutes,
+      gameMinutes +
+        deltaSeconds *
+        gameTimeSettings
+          .gameMinutesPerRealSecond
+    );
+
+  updateGameClock();
+
+  if (
+    gameMinutes >=
+      gameTimeSettings.endMinutes &&
+    distanceFromDock() >
+      dockReturnRadius
+  ) {
+    failTrip("RETURN TIME OVER");
+  }
+}
+
+
+/* =========================
    マップ更新
 ========================= */
 
@@ -1901,6 +2033,9 @@ function resetTrip() {
 
   energy = 100;
 
+  gameMinutes =
+    gameTimeSettings.startMinutes;
+
   hasLeftDock = false;
 
   returnPromptOpen = false;
@@ -1928,6 +2063,7 @@ function resetTrip() {
   changeSpeed("normal");
 
   updateEnergy();
+  updateGameClock();
   updateWorld();
 }
 
@@ -2005,7 +2141,7 @@ returnNo.addEventListener(
    ENERGY切れ
 ========================= */
 
-function failTrip() {
+function failTrip(reason = "FUEL EMPTY") {
 
   energy = 0;
 
@@ -2017,7 +2153,9 @@ function failTrip() {
   keys.right = false;
 
   alert(
-    "ENERGY切れ！\n\n釣行失敗。\n今回釣った魚はすべて無効です。"
+    "GAME OVER\n" +
+    reason +
+    "\n\n今回釣った魚はすべて無効です。"
   );
 
   /*
@@ -2048,6 +2186,8 @@ function gameLoop(currentFrameTime) {
 
   previousFrameTime = currentFrameTime;
 
+  updateGameTime(deltaSeconds);
+
   let dx = 0;
   let dy = 0;
 
@@ -2056,7 +2196,9 @@ function gameLoop(currentFrameTime) {
   */
   if (
     !returnPromptOpen &&
-    !hitPromptOpen
+    !hitPromptOpen &&
+    gameMinutes <
+      gameTimeSettings.endMinutes
   ) {
 
     if (keys.up) {
@@ -2124,7 +2266,12 @@ function gameLoop(currentFrameTime) {
           ENERGY消費
         */
         energy -=
-          energyUse[speedMode] *
+          fuelSettings
+            .normalUsePerSecond *
+          fuelSettings
+            .speedMultipliers[
+              speedMode
+            ] *
           deltaSeconds;
 
 
@@ -2183,7 +2330,7 @@ function gameLoop(currentFrameTime) {
           !returnPromptOpen
         ) {
 
-          failTrip();
+          failTrip("FUEL EMPTY");
 
         } else if (
           !returnPromptOpen
@@ -2484,6 +2631,7 @@ window.addEventListener(
 
 
 updateEnergy();
+updateGameClock();
 
 currentFishingAreaKey =
   getFishingArea(
