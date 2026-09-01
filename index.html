@@ -436,6 +436,114 @@ html, body {
   letter-spacing: 0.06em;
 }
 
+/* 魚とのファイト演出（画像・Canvasは使わない） */
+#fightPanel {
+  display: none;
+  min-height: 300px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+#fightStage {
+  position: relative;
+  width: min(390px, 82vw);
+  height: 285px;
+  overflow: hidden;
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(3,24,39,0.72) 0 63%,
+      rgba(5,48,70,0.78) 64% 100%
+    );
+}
+
+#fightScene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#fightRodPath {
+  fill: none;
+  stroke: #f5f5f1;
+  stroke-width: 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.55));
+}
+
+#fightRodHandle {
+  fill: none;
+  stroke: #111;
+  stroke-width: 13;
+  stroke-linecap: round;
+}
+
+#fightLinePath {
+  fill: none;
+  stroke: rgba(255,255,255,0.92);
+  stroke-width: 2;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.65));
+}
+
+.fightWaterLine {
+  fill: none;
+  stroke: rgba(255,255,255,0.3);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+#fightRipple,
+#fightRippleEcho {
+  fill: none;
+  stroke: rgba(255,255,255,0.54);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: fightRipple 1.35s ease-out infinite;
+}
+
+#fightRippleEcho {
+  opacity: 0.45;
+  animation-delay: -0.68s;
+}
+
+#fightSplash {
+  opacity: 0;
+  transition: opacity 0.09s ease;
+}
+
+#fightSplash path {
+  fill: none;
+  stroke: rgba(255,255,255,0.82);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+#fightPanel.strong-pull #fightRipple,
+#fightPanel.strong-pull #fightRippleEcho {
+  stroke-width: 3;
+  animation-duration: 0.7s;
+}
+
+#fightPanel.strong-pull #fightSplash {
+  opacity: var(--splash-opacity, 0.72);
+}
+
+@keyframes fightRipple {
+  from {
+    opacity: 0.68;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
 #catchPanel {
   display: none;
   min-height: 270px;
@@ -615,6 +723,26 @@ html, body {
       <div id="gaugeZoneResult" aria-live="polite"></div>
       <div id="catchResult" aria-live="polite"></div>
 
+      <!-- 魚を表示せず、ロッド・ライン・水面だけで見せるファイト画面 -->
+      <section id="fightPanel" aria-label="魚とのファイト中">
+        <div id="fightStage">
+          <svg id="fightScene" viewBox="0 0 420 285" aria-hidden="true">
+            <path class="fightWaterLine" d="M0 205 C70 199 135 211 210 205 S350 199 420 205" />
+            <path class="fightWaterLine" d="M0 229 C90 223 145 235 235 229 S350 224 420 229" />
+            <ellipse id="fightRipple" cx="306" cy="207" rx="45" ry="12" />
+            <ellipse id="fightRippleEcho" cx="306" cy="207" rx="30" ry="8" />
+            <g id="fightSplash">
+              <path d="M290 202 Q282 186 286 176" />
+              <path d="M306 201 Q305 180 313 168" />
+              <path d="M322 202 Q332 187 332 178" />
+            </g>
+            <path id="fightRodHandle" d="M62 262 L86 232" />
+            <path id="fightRodPath" d="M78 242 Q164 111 263 73" />
+            <path id="fightLinePath" d="M263 73 Q292 132 306 207" />
+          </svg>
+        </div>
+      </section>
+
       <!-- 将来、魚画像を追加できる独立した釣果画面 -->
       <section id="catchPanel" aria-live="polite">
         <div id="catchImageSlot" aria-hidden="true"></div>
@@ -659,6 +787,13 @@ const hitLogo = document.getElementById("hitLogo");
 const hitLogoImage = document.getElementById("hitLogoImage");
 const gaugeZoneResult = document.getElementById("gaugeZoneResult");
 const catchResult = document.getElementById("catchResult");
+const fightPanel = document.getElementById("fightPanel");
+const fightStage = document.getElementById("fightStage");
+const fightRodPath = document.getElementById("fightRodPath");
+const fightLinePath = document.getElementById("fightLinePath");
+const fightRipple = document.getElementById("fightRipple");
+const fightRippleEcho = document.getElementById("fightRippleEcho");
+const fightSplash = document.getElementById("fightSplash");
 const catchPanel = document.getElementById("catchPanel");
 const catchSpecies = document.getElementById("catchSpecies");
 const catchSize = document.getElementById("catchSize");
@@ -828,6 +963,42 @@ const fishingGaugeColors = {
   normal: "#c64a32"
 };
 
+
+/* =========================
+   魚とのファイト設定
+========================= */
+
+const fishFightSettings = {
+  durationRandomness: 0.18,
+  sizeBands: [
+    {
+      maximumSize: 29.9,
+      minimumSeconds: 0.8,
+      maximumSeconds: 1.3
+    },
+    {
+      maximumSize: 39.9,
+      minimumSeconds: 1.3,
+      maximumSeconds: 2.0
+    },
+    {
+      maximumSize: 44.9,
+      minimumSeconds: 2.0,
+      maximumSeconds: 2.8
+    },
+    {
+      maximumSize: 49.9,
+      minimumSeconds: 2.8,
+      maximumSeconds: 4.0
+    },
+    {
+      maximumSize: Infinity,
+      minimumSeconds: 4.0,
+      maximumSeconds: 5.5
+    }
+  ]
+};
+
 /*
   ロゴのパス・サイズ・状態はここだけで変更する。
   将来の色違い画像は states に追加する。
@@ -856,6 +1027,14 @@ let fishingSequenceState = "idle";
 let gaugeMarkerAngle = 180;
 let gaugePreviousFrameTime = null;
 let gaugeAnimationFrameId = null;
+let fightAnimationFrameId = null;
+let fightBeatTimeoutId = null;
+let fightFinishTimeoutId = null;
+let pendingCaughtFish = null;
+let fightPullCurrent = 0;
+let fightPullTarget = 0;
+let fightBendCurrent = 0;
+let fightBendTarget = 0;
 
 const processedLogoCache =
   new Map();
@@ -1586,6 +1765,9 @@ function startFishingGauge() {
   catchPanel.style.display =
     "none";
 
+  fightPanel.style.display =
+    "none";
+
   catchSpecies.textContent =
     "BLACK BASS";
 
@@ -1650,6 +1832,357 @@ function getGaugeZone(
 }
 
 
+function getFishFightProfile(
+  fishSize
+) {
+
+  const sizeBand =
+    fishFightSettings
+      .sizeBands
+      .find(
+        band =>
+          fishSize <=
+          band.maximumSize
+      );
+
+  const baseDuration =
+    randomBetween(
+      sizeBand.minimumSeconds,
+      sizeBand.maximumSeconds
+    );
+
+  const randomDurationFactor =
+    randomBetween(
+      1 -
+        fishFightSettings
+          .durationRandomness,
+      1 +
+        fishFightSettings
+          .durationRandomness
+    );
+
+  const sizeStrength =
+    Math.max(
+      0,
+      Math.min(
+        1,
+        (fishSize - 20) / 35
+      )
+    );
+
+  return {
+    durationMilliseconds:
+      Math.round(
+        baseDuration *
+        randomDurationFactor *
+        1000
+      ),
+    intensity:
+      Math.max(
+        0.5,
+        Math.min(
+          1.15,
+          0.56 +
+            sizeStrength * 0.48 +
+            randomBetween(-0.1, 0.1)
+        )
+      ),
+    strongPullChance:
+      0.2 +
+      sizeStrength * 0.34,
+    quietBeatChance:
+      0.08 +
+      sizeStrength * 0.2
+  };
+}
+
+
+function updateFishFightAnimation() {
+
+  if (
+    fishingSequenceState !==
+    "fight"
+  ) {
+    return;
+  }
+
+  fightPullCurrent +=
+    (
+      fightPullTarget -
+      fightPullCurrent
+    ) *
+    0.13;
+
+  fightBendCurrent +=
+    (
+      fightBendTarget -
+      fightBendCurrent
+    ) *
+    0.11;
+
+  const tipX =
+    263 +
+    fightPullCurrent * 0.22;
+
+  const tipY =
+    73 +
+    fightBendCurrent * 29;
+
+  const waterX =
+    306 +
+    fightPullCurrent;
+
+  fightRodPath.setAttribute(
+    "d",
+    `M78 242 Q${
+      164 +
+      fightPullCurrent * 0.1
+    } ${
+      111 +
+      fightBendCurrent * 19
+    } ${tipX} ${tipY}`
+  );
+
+  fightLinePath.setAttribute(
+    "d",
+    `M${tipX} ${tipY} Q${
+      (tipX + waterX) / 2
+    } ${
+      130 +
+      fightBendCurrent * 4
+    } ${waterX} 207`
+  );
+
+  fightRipple.setAttribute(
+    "cx",
+    waterX
+  );
+
+  fightRippleEcho.setAttribute(
+    "cx",
+    waterX
+  );
+
+  fightSplash.setAttribute(
+    "transform",
+    `translate(${waterX - 306} 0)`
+  );
+
+  fightAnimationFrameId =
+    requestAnimationFrame(
+      updateFishFightAnimation
+    );
+}
+
+
+function scheduleFishFightBeat(
+  profile
+) {
+
+  if (
+    fishingSequenceState !==
+    "fight"
+  ) {
+    return;
+  }
+
+  const quietBeat =
+    Math.random() <
+    profile.quietBeatChance;
+
+  const strongPull =
+    !quietBeat &&
+    Math.random() <
+      profile.strongPullChance;
+
+  if (quietBeat) {
+
+    fightPullTarget =
+      randomBetween(-7, 7);
+
+    fightBendTarget =
+      randomBetween(0.12, 0.28);
+
+  } else {
+
+    const direction =
+      Math.random() < 0.5 ?
+        -1 :
+        1;
+
+    const pullRange =
+      strongPull ?
+        randomBetween(34, 51) :
+        randomBetween(14, 31);
+
+    fightPullTarget =
+      direction *
+      pullRange *
+      profile.intensity;
+
+    fightBendTarget =
+      (
+        strongPull ?
+          randomBetween(0.76, 1) :
+          randomBetween(0.38, 0.7)
+      ) *
+      profile.intensity;
+  }
+
+  fightPanel.classList.toggle(
+    "strong-pull",
+    strongPull
+  );
+
+  const nextBeatDelay =
+    quietBeat ?
+      randomBetween(260, 430) :
+      randomBetween(150, 310);
+
+  fightBeatTimeoutId =
+    setTimeout(
+      () =>
+        scheduleFishFightBeat(
+          profile
+        ),
+      nextBeatDelay
+    );
+}
+
+
+function clearFishFightAnimation() {
+
+  if (
+    fightAnimationFrameId !==
+    null
+  ) {
+    cancelAnimationFrame(
+      fightAnimationFrameId
+    );
+  }
+
+  clearTimeout(
+    fightBeatTimeoutId
+  );
+
+  clearTimeout(
+    fightFinishTimeoutId
+  );
+
+  fightAnimationFrameId = null;
+  fightBeatTimeoutId = null;
+  fightFinishTimeoutId = null;
+
+  fightPanel.classList.remove(
+    "strong-pull"
+  );
+}
+
+
+function startFishFight(
+  caughtFish
+) {
+
+  clearFishFightAnimation();
+
+  pendingCaughtFish = caughtFish;
+  fishingSequenceState = "fight";
+
+  const fightProfile =
+    getFishFightProfile(
+      caughtFish.sizeCm
+    );
+
+  hitTitle.style.display = "none";
+  hitSubtitle.style.display = "none";
+  timingGauge.style.display = "none";
+  gaugeZoneResult.style.display = "none";
+  catchResult.style.display = "none";
+  catchPanel.style.display = "none";
+  fightPanel.style.display = "flex";
+  fishButton.style.display = "none";
+  hitContinue.style.display = "none";
+
+  fightPanel.dataset.durationMilliseconds =
+    String(
+      fightProfile
+        .durationMilliseconds
+    );
+
+  fightPanel.style.setProperty(
+    "--splash-opacity",
+    String(
+      Math.min(
+        0.88,
+        0.48 +
+          fightProfile.intensity *
+          0.3
+      )
+    )
+  );
+
+  fightPullCurrent = 0;
+  fightPullTarget =
+    randomBetween(-18, 18) *
+    fightProfile.intensity;
+  fightBendCurrent = 0;
+  fightBendTarget =
+    0.85 *
+    fightProfile.intensity;
+
+  fightPanel.classList.add(
+    "strong-pull"
+  );
+
+  updateFishFightAnimation();
+
+  fightBeatTimeoutId =
+    setTimeout(
+      () =>
+        scheduleFishFightBeat(
+          fightProfile
+        ),
+      220
+  );
+
+  fightFinishTimeoutId =
+    setTimeout(
+      finishFishFight,
+      fightProfile
+        .durationMilliseconds
+    );
+}
+
+
+function finishFishFight() {
+
+  if (
+    fishingSequenceState !==
+      "fight" ||
+    !pendingCaughtFish
+  ) {
+    return;
+  }
+
+  const caughtFish =
+    pendingCaughtFish;
+
+  clearFishFightAnimation();
+  pendingCaughtFish = null;
+  fishingSequenceState = "result";
+  fightPanel.style.display = "none";
+
+  showCatchPanel(
+    caughtFish
+  );
+
+  hitContinue.style.display =
+    "inline-block";
+
+  hitContinue.focus();
+}
+
+
 function showCatchPanel(
   caughtFish
 ) {
@@ -1667,6 +2200,9 @@ function showCatchPanel(
     "none";
 
   catchResult.style.display =
+    "none";
+
+  fightPanel.style.display =
     "none";
 
   catchSpecies.textContent =
@@ -1691,9 +2227,6 @@ function stopFishingGauge() {
     return;
   }
 
-  fishingSequenceState =
-    "result";
-
   if (
     gaugeAnimationFrameId !==
     null
@@ -1704,6 +2237,12 @@ function stopFishingGauge() {
   }
 
   gaugeAnimationFrameId = null;
+
+  fishButton.style.display =
+    "none";
+
+  hitContinue.style.display =
+    "none";
 
   const zone = getGaugeZone(
     gaugeMarkerAngle
@@ -1734,30 +2273,32 @@ function stopFishingGauge() {
         )
       );
 
-    showCatchPanel(
+    startFishFight(
       caughtFish
     );
 
   } else {
+
+    fishingSequenceState =
+      "result";
 
     catchResult.textContent =
       "MISS…";
 
     catchResult.style.color =
       "#d8e0e5";
+
+    hitContinue.style.display =
+      "inline-block";
+
+    hitContinue.focus();
   }
-
-  fishButton.style.display =
-    "none";
-
-  hitContinue.style.display =
-    "inline-block";
-
-  hitContinue.focus();
 }
 
 
 function resetFishingSequence() {
+
+  clearFishFightAnimation();
 
   if (
     gaugeAnimationFrameId !==
@@ -1772,6 +2313,7 @@ function resetFishingSequence() {
   gaugePreviousFrameTime = null;
   fishingSequenceState = "idle";
   activeFishingArea = null;
+  pendingCaughtFish = null;
 
   hitTitle.style.display =
     "block";
@@ -1792,6 +2334,13 @@ function resetFishingSequence() {
 
   catchPanel.style.display =
     "none";
+
+  fightPanel.style.display =
+    "none";
+
+  fightPanel.removeAttribute(
+    "data-duration-milliseconds"
+  );
 
   catchSize.textContent = "";
 
