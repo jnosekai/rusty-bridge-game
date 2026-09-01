@@ -2179,14 +2179,31 @@ function gameLoop(currentFrameTime) {
     previousFrameTime = currentFrameTime;
   }
 
-  const deltaSeconds = Math.min(
-    (currentFrameTime - previousFrameTime) / 1000,
-    0.05
-  );
+  /*
+    時計は実際に経過した秒数を使う。
+    船の移動は大きな画面停止後に飛ばないよう、
+    従来どおり1フレーム分を制限する。
+  */
+  const elapsedRealSeconds =
+    Math.max(
+      0,
+      (
+        currentFrameTime -
+        previousFrameTime
+      ) / 1000
+    );
+
+  const movementDeltaSeconds =
+    Math.min(
+      elapsedRealSeconds,
+      0.05
+    );
 
   previousFrameTime = currentFrameTime;
 
-  updateGameTime(deltaSeconds);
+  updateGameTime(
+    elapsedRealSeconds
+  );
 
   let dx = 0;
   let dy = 0;
@@ -2233,13 +2250,13 @@ function gameLoop(currentFrameTime) {
         dx /
         directionLength *
         speed *
-        deltaSeconds;
+        movementDeltaSeconds;
 
       dy =
         dy /
         directionLength *
         speed *
-        deltaSeconds;
+        movementDeltaSeconds;
 
       const nextX =
         playerX + dx;
@@ -2270,9 +2287,9 @@ function gameLoop(currentFrameTime) {
             .normalUsePerSecond *
           fuelSettings
             .speedMultipliers[
-              speedMode
+            speedMode
             ] *
-          deltaSeconds;
+          movementDeltaSeconds;
 
 
         const dockDistance =
