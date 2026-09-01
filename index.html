@@ -970,6 +970,22 @@ const fishingGaugeColors = {
 
 const fishFightSettings = {
   durationRandomness: 0.18,
+  missDurations: {
+    shortChance: 0.34,
+    longChance: 0.26,
+    short: {
+      minimumSeconds: 0.75,
+      maximumSeconds: 1.7
+    },
+    medium: {
+      minimumSeconds: 1.5,
+      maximumSeconds: 3.5
+    },
+    long: {
+      minimumSeconds: 3.5,
+      maximumSeconds: 5.8
+    }
+  },
   sizeBands: [
     {
       maximumSize: 29.9,
@@ -1030,7 +1046,7 @@ let gaugeAnimationFrameId = null;
 let fightAnimationFrameId = null;
 let fightBeatTimeoutId = null;
 let fightFinishTimeoutId = null;
-let pendingCaughtFish = null;
+let pendingFightResult = null;
 let fightPullCurrent = 0;
 let fightPullTarget = 0;
 let fightBendCurrent = 0;
@@ -1897,6 +1913,69 @@ function getFishFightProfile(
 }
 
 
+function getMissFightProfile() {
+
+  const durationRoll =
+    Math.random();
+
+  let durationRange =
+    fishFightSettings
+      .missDurations
+      .medium;
+
+  if (
+    durationRoll <
+    fishFightSettings
+      .missDurations
+      .shortChance
+  ) {
+    durationRange =
+      fishFightSettings
+        .missDurations
+        .short;
+
+  } else if (
+    durationRoll >=
+    1 -
+      fishFightSettings
+        .missDurations
+        .longChance
+  ) {
+    durationRange =
+      fishFightSettings
+        .missDurations
+        .long;
+  }
+
+  const durationSeconds =
+    randomBetween(
+      durationRange.minimumSeconds,
+      durationRange.maximumSeconds
+    );
+
+  /*
+    MISSでも大型魚と同じ強さ・長さが混ざる。
+    動きだけで成否を確定予測できないようにする。
+  */
+  const intensity =
+    randomBetween(0.52, 1.13);
+
+  return {
+    durationMilliseconds:
+      Math.round(
+        durationSeconds *
+        randomBetween(0.84, 1.16) *
+        1000
+      ),
+    intensity,
+    strongPullChance:
+      randomBetween(0.2, 0.55),
+    quietBeatChance:
+      randomBetween(0.08, 0.29)
+  };
+}
+
+
 function updateFishFightAnimation() {
 
   if (
@@ -2080,18 +2159,24 @@ function clearFishFightAnimation() {
 
 
 function startFishFight(
-  caughtFish
+  fightResult
 ) {
 
   clearFishFightAnimation();
 
-  pendingCaughtFish = caughtFish;
+  pendingFightResult =
+    fightResult;
+
   fishingSequenceState = "fight";
 
   const fightProfile =
-    getFishFightProfile(
-      caughtFish.sizeCm
-    );
+    fightResult.caught ?
+      getFishFightProfile(
+        fightResult
+          .caughtFish
+          .sizeCm
+      ) :
+      getMissFightProfile();
 
   hitTitle.style.display = "none";
   hitSubtitle.style.display = "none";
@@ -2159,27 +2244,54 @@ function finishFishFight() {
   if (
     fishingSequenceState !==
       "fight" ||
-    !pendingCaughtFish
+    !pendingFightResult
   ) {
     return;
   }
 
-  const caughtFish =
-    pendingCaughtFish;
+  const fightResult =
+    pendingFightResult;
 
   clearFishFightAnimation();
-  pendingCaughtFish = null;
+  pendingFightResult = null;
   fishingSequenceState = "result";
   fightPanel.style.display = "none";
 
-  showCatchPanel(
-    caughtFish
-  );
+  if (fightResult.caught) {
+
+    showCatchPanel(
+      fightResult.caughtFish
+    );
+
+  } else {
+
+    showMissResult();
+  }
 
   hitContinue.style.display =
     "inline-block";
 
   hitContinue.focus();
+}
+
+
+function showMissResult() {
+
+  hitTitle.style.display = "none";
+  hitSubtitle.style.display = "none";
+  timingGauge.style.display = "none";
+  gaugeZoneResult.style.display = "none";
+  fightPanel.style.display = "none";
+  catchPanel.style.display = "none";
+
+  catchResult.textContent =
+    "MISS…";
+
+  catchResult.style.color =
+    "#d8e0e5";
+
+  catchResult.style.display =
+    "block";
 }
 
 
@@ -2262,37 +2374,24 @@ function stopFishingGauge() {
   gaugeZoneResult.style.color =
     fishingGaugeColors[zone];
 
-  if (caught) {
-
-    const caughtFish =
+  const caughtFish =
+    caught ?
       generateFishCatch(
         activeFishingArea ||
         getFishingArea(
           playerX,
           playerY
         )
-      );
+      ) :
+      null;
 
-    startFishFight(
-      caughtFish
-    );
-
-  } else {
-
-    fishingSequenceState =
-      "result";
-
-    catchResult.textContent =
-      "MISS…";
-
-    catchResult.style.color =
-      "#d8e0e5";
-
-    hitContinue.style.display =
-      "inline-block";
-
-    hitContinue.focus();
-  }
+  /*
+    成功・失敗はファイト終了まで画面に出さない。
+  */
+  startFishFight({
+    caught,
+    caughtFish
+  });
 }
 
 
@@ -2313,7 +2412,7 @@ function resetFishingSequence() {
   gaugePreviousFrameTime = null;
   fishingSequenceState = "idle";
   activeFishingArea = null;
-  pendingCaughtFish = null;
+  pendingFightResult = null;
 
   hitTitle.style.display =
     "block";
