@@ -995,6 +995,7 @@ html, body {
 
 </div>
 
+<script src="fishing-area-system.js"></script>
 <script src="save-system.js"></script>
 <script>
 
@@ -1246,20 +1247,26 @@ const fishingGrid = {
   rows: 16
 };
 
-const defaultFishingAreaSettings = {
-  hitRate: 0.12,
-  sizeMin: 20,
-  sizeMax: 45,
-  bigFishRate: 0.05
-};
+const defaultFishingAreaSettings =
+  GreenBoatFishingAreas
+    .DEFAULT_AREA_SETTINGS;
 
 /*
   例:
   "3:5": {
-    hitRate: 0.25,
+    baseHitRate: 0.15,
     sizeMin: 35,
     sizeMax: 55,
-    bigFishRate: 0.15
+    bigFishRate: 0.15,
+    depthType: "SHALLOW",
+    structureType: "COVE",
+    seasonAffinity: { SPRING: 1.05 },
+    temperaturePreference: {
+      min: 12,
+      max: 20,
+      outsideMultiplier: 0.95
+    },
+    weatherAffinity: { CLOUDY: 1.05 }
   }
 */
 const fishingAreaOverrides = {};
@@ -1568,15 +1575,15 @@ function getFishingArea(
     fishingAreaCache.set(
       coordinates.key,
       {
-        id: coordinates.key,
-        column: coordinates.column,
-        row: coordinates.row,
-        ...defaultFishingAreaSettings,
-        ...(
+        ...GreenBoatFishingAreas
+          .mergeAreaSettings(
           fishingAreaOverrides[
             coordinates.key
           ] || {}
-        )
+        ),
+        id: coordinates.key,
+        column: coordinates.column,
+        row: coordinates.row
       }
     );
   }
@@ -2916,10 +2923,23 @@ function checkFishingAreaEntry() {
 
   currentFishingAreaKey = area.id;
 
-  if (
-    Math.random() <
-    area.hitRate
-  ) {
+  const environment =
+    tripData.environment;
+
+  const effectiveHitRate =
+    GreenBoatFishingAreas
+      .getEffectiveHitRate(
+        area,
+        environment,
+        {
+          seasonMultiplier:
+            seasonConfig[
+              environment.season
+            ].hitRateMultiplier
+        }
+      );
+
+  if (Math.random() < effectiveHitRate) {
     activeFishingArea = area;
     openHitPrompt();
   }

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>GREEN BOAT Fishing Area Tests</title>
+  <style>
+    body { margin: 0; padding: 32px; background: #071c29; color: #fff; font: 16px sans-serif; }
+    h1 { color: #8dd047; }
+    li { margin: 10px 0; }
+    .pass { color: #9ee86c; }
+    .fail { color: #ff7b6f; }
+  </style>
+</head>
+<body>
+  <h1>Fishing Area Tests</h1>
+  <ul id="results" aria-label="釣りエリアシステムテスト結果"></ul>
+  <script src="fishing-area-system.js"></script>
+  <script>
+    const results = GreenBoatFishingAreas.runFoundationChecks();
+    const list = document.getElementById("results");
+
+    for (const [name, passed] of Object.entries(results)) {
+      const item = document.createElement("li");
+      item.className = passed ? "pass" : "fail";
+      item.textContent = `${passed ? "PASS" : "FAIL"}: ${name}`;
+      list.appendChild(item);
+    }
+
+    document.body.dataset.allPassed =
+      String(Object.values(results).every(Boolean));
+  </script>
+</body>
+</html>
