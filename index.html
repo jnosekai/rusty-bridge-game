@@ -325,6 +325,98 @@ html, body {
   color: #111;
 }
 
+/* 帰還後の今回の釣果 */
+#tripResultModal {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,0.72);
+  z-index: 110;
+}
+
+#tripResultBox {
+  width: min(360px, 100%);
+  max-height: min(620px, 88vh);
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255,255,255,0.86);
+  border-radius: 14px;
+  background: #071c29;
+  color: white;
+  text-align: center;
+}
+
+#tripResultTitle {
+  color: #8dd047;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#tripCatchCount {
+  margin-top: 18px;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+#tripBiggestLabel {
+  margin-top: 20px;
+  color: rgba(255,255,255,0.68);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+#tripBiggestSize {
+  margin-top: 4px;
+  font-size: 34px;
+  font-weight: 900;
+}
+
+#tripNewRecord {
+  display: none;
+  margin-top: 6px;
+  color: #f6d447;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+#tripCatchList {
+  display: grid;
+  gap: 7px;
+  margin: 22px 0;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255,255,255,0.22);
+  border-bottom: 1px solid rgba(255,255,255,0.22);
+  list-style: none;
+}
+
+#tripCatchList li {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#tripEmptyMessage {
+  color: rgba(255,255,255,0.68);
+}
+
+#nextTripButton {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid white;
+  border-radius: 9px;
+  background: #8dd047;
+  color: #071c29;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
 /* HIT表示 */
 #hitModal {
   position: absolute;
@@ -766,6 +858,18 @@ html, body {
     </div>
   </div>
 
+  <div id="tripResultModal" role="dialog" aria-modal="true" aria-labelledby="tripResultTitle">
+    <section id="tripResultBox">
+      <div id="tripResultTitle">TODAY'S CATCH</div>
+      <div id="tripCatchCount">0 FISH</div>
+      <div id="tripBiggestLabel">BIGGEST</div>
+      <div id="tripBiggestSize">--</div>
+      <div id="tripNewRecord">NEW RECORD!</div>
+      <ul id="tripCatchList" aria-label="今回釣った魚サイズ一覧"></ul>
+      <button id="nextTripButton">NEXT TRIP</button>
+    </section>
+  </div>
+
   <!-- FISHタイミングゲージ -->
   <div id="hitModal" role="dialog" aria-modal="true" aria-labelledby="hitTitle">
     <div id="hitBox">
@@ -843,6 +947,12 @@ const weatherText = document.getElementById("weatherText");
 const returnModal = document.getElementById("returnModal");
 const returnYes = document.getElementById("returnYes");
 const returnNo = document.getElementById("returnNo");
+const tripResultModal = document.getElementById("tripResultModal");
+const tripCatchCount = document.getElementById("tripCatchCount");
+const tripBiggestSize = document.getElementById("tripBiggestSize");
+const tripNewRecord = document.getElementById("tripNewRecord");
+const tripCatchList = document.getElementById("tripCatchList");
+const nextTripButton = document.getElementById("nextTripButton");
 
 const hitModal = document.getElementById("hitModal");
 const hitTitle = document.getElementById("hitTitle");
@@ -879,6 +989,24 @@ const saveRepository =
 
 let gameSaveData =
   saveRepository.load();
+
+
+/* =========================
+   出船中の一時釣果
+========================= */
+
+function createTripData() {
+  return {
+    catches: [],
+    catchCount: 0,
+    biggestFish: 0,
+    hasNewRecord: false,
+    completionSaved: false
+  };
+}
+
+
+let tripData = createTripData();
 
 
 /* =========================
@@ -919,6 +1047,8 @@ let hasLeftDock = false;
 let returnPromptOpen = false;
 
 let returnPromptBlocked = false;
+
+let tripResultOpen = false;
 
 
 /* =========================
@@ -1537,6 +1667,30 @@ function recordCaughtFish(
     });
 
   return isNewRecord;
+}
+
+
+function addCatchToTrip(
+  caughtFish,
+  isNewRecord
+) {
+
+  tripData.catches.push(
+    caughtFish.sizeCm
+  );
+
+  tripData.catchCount =
+    tripData.catches.length;
+
+  tripData.biggestFish =
+    Math.max(
+      tripData.biggestFish,
+      caughtFish.sizeCm
+    );
+
+  if (isNewRecord) {
+    tripData.hasNewRecord = true;
+  }
 }
 
 
@@ -2521,6 +2675,11 @@ function showCatchPanel(
   const isNewRecord =
     recordCaughtFish(caughtFish);
 
+  addCatchToTrip(
+    caughtFish,
+    isNewRecord
+  );
+
   hitTitle.style.display =
     "none";
 
@@ -3057,8 +3216,11 @@ function updateGameClock() {
 function shouldGameTimeAdvance() {
 
   return !(
-    hitPromptOpen &&
-    fishingSequenceState === "result"
+    tripResultOpen ||
+    (
+      hitPromptOpen &&
+      fishingSequenceState === "result"
+    )
   );
 }
 
@@ -3141,7 +3303,67 @@ function updateWorld() {
    釣行リセット
 ========================= */
 
+function renderTripResult() {
+
+  tripCatchCount.textContent =
+    tripData.catchCount +
+    " FISH";
+
+  tripBiggestSize.textContent =
+    tripData.catchCount > 0 ?
+      tripData.biggestFish.toFixed(1) +
+        " cm" :
+      "--";
+
+  tripNewRecord.style.display =
+    tripData.hasNewRecord ?
+      "block" : "none";
+
+  tripCatchList.replaceChildren();
+
+  if (tripData.catchCount === 0) {
+    const emptyItem =
+      document.createElement("li");
+    emptyItem.id = "tripEmptyMessage";
+    emptyItem.textContent = "NO CATCH";
+    tripCatchList.appendChild(emptyItem);
+    return;
+  }
+
+  for (const sizeCm of tripData.catches) {
+    const catchItem =
+      document.createElement("li");
+    catchItem.textContent =
+      sizeCm.toFixed(1) + " cm";
+    tripCatchList.appendChild(catchItem);
+  }
+}
+
+
+function completeTrip() {
+
+  if (tripData.completionSaved) {
+    return;
+  }
+
+  tripData.completionSaved = true;
+
+  gameSaveData =
+    saveRepository.update((data) => {
+      data.player.totalTrips += 1;
+    });
+
+  renderTripResult();
+
+  tripResultOpen = true;
+  returnModal.style.display = "none";
+  tripResultModal.style.display = "flex";
+  nextTripButton.focus();
+}
+
 function resetTrip() {
+
+  tripData = createTripData();
 
   playerX = dockX;
   playerY = dockY;
@@ -3159,6 +3381,8 @@ function resetTrip() {
 
   returnPromptBlocked = false;
 
+  tripResultOpen = false;
+
   hitPromptOpen = false;
 
   resetFishingSequence();
@@ -3170,6 +3394,9 @@ function resetTrip() {
     ).id;
 
   returnModal.style.display =
+    "none";
+
+  tripResultModal.style.display =
     "none";
 
   hitModal.style.display =
@@ -3213,17 +3440,14 @@ returnYes.addEventListener(
   "click",
   () => {
 
-    /*
-      後でここで
-      今回釣った魚を正式記録する
-    */
-
-    alert(
-      "釣行終了！\n今回の釣果が確定しました。"
-    );
-
-    resetTrip();
+    completeTrip();
   }
+);
+
+
+nextTripButton.addEventListener(
+  "click",
+  resetTrip
 );
 
 
