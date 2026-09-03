@@ -515,13 +515,13 @@ html, body {
   position: absolute;
   left: 50%;
   top: -3px;
-  width: 14%;
-  height: 12px;
+  width: var(--gauge-marker-width, 5%);
+  height: var(--gauge-marker-height, 6px);
   border-radius: 999px;
   background: white;
   box-shadow:
-    0 0 7px 3px white,
-    0 0 16px 7px rgba(255,255,255,0.72);
+    0 0 4px 2px white,
+    0 0 9px 4px rgba(255,255,255,0.68);
   transform: translateX(-50%);
 }
 
@@ -1258,8 +1258,10 @@ let activeFishingArea = null;
 */
 const fishingGaugeSettings = {
   markerSpeedDegreesPerSecond: 180,
-  bestZoneDegrees: 48,
-  goodZoneDegrees: 64,
+  markerWidthPercent: 5,
+  markerHeightPixels: 6,
+  bestZoneDegrees: 24,
+  goodZoneDegrees: 58,
   successRates: {
     best: 0.95,
     good: 0.70,
@@ -2062,6 +2064,18 @@ function applyFishingGaugeZones() {
       ${fishingGaugeColors.normal} ${firstGoodEnd}deg ${secondGoodStart}deg,
       ${fishingGaugeColors.good} ${secondGoodStart}deg 360deg
     )`
+  );
+
+  timingGauge.style.setProperty(
+    "--gauge-marker-width",
+    fishingGaugeSettings
+      .markerWidthPercent + "%"
+  );
+
+  timingGauge.style.setProperty(
+    "--gauge-marker-height",
+    fishingGaugeSettings
+      .markerHeightPixels + "px"
   );
 }
 
