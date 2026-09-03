@@ -616,6 +616,14 @@ html, body {
   letter-spacing: 0.04em;
 }
 
+#catchNewRecord {
+  display: none;
+  color: #f6d447;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
 #fishButton,
 #hitContinue {
   width: min(280px, 100%);
@@ -799,9 +807,10 @@ html, body {
       <!-- 将来、魚画像を追加できる独立した釣果画面 -->
       <section id="catchPanel" aria-live="polite">
         <div id="catchImageSlot" aria-hidden="true"></div>
-        <div id="catchPanelTitle">FISH ON!</div>
+        <div id="catchPanelTitle">CATCH!</div>
         <div id="catchSpecies">BLACK BASS</div>
         <div id="catchSize"></div>
+        <div id="catchNewRecord">NEW RECORD!</div>
       </section>
 
       <button id="fishButton">FISH!</button>
@@ -854,6 +863,7 @@ const fightSplash = document.getElementById("fightSplash");
 const catchPanel = document.getElementById("catchPanel");
 const catchSpecies = document.getElementById("catchSpecies");
 const catchSize = document.getElementById("catchSize");
+const catchNewRecord = document.getElementById("catchNewRecord");
 const fishButton = document.getElementById("fishButton");
 const hitContinue = document.getElementById("hitContinue");
 
@@ -867,7 +877,7 @@ const saveRepository =
     window.localStorage
   );
 
-const gameSaveData =
+let gameSaveData =
   saveRepository.load();
 
 
@@ -1426,6 +1436,17 @@ function getFishingArea(
    魚サイズ生成
 ========================= */
 
+const fishSizeGenerationSettings = {
+  species: "BLACK BASS",
+  bands: [
+    { minimum: 20, maximum: 29.9, weight: 45 },
+    { minimum: 30, maximum: 39.9, weight: 35 },
+    { minimum: 40, maximum: 44.9, weight: 14 },
+    { minimum: 45, maximum: 49.9, weight: 5 },
+    { minimum: 50, maximum: 55, weight: 1 }
+  ]
+};
+
 function randomBetween(
   minimum,
   maximum
@@ -1442,54 +1463,80 @@ function randomBetween(
 }
 
 
-function generateFishCatch(
-  area
+function chooseWeightedFishSizeBand(
+  bands
 ) {
 
-  const isBigFish =
-    Math.random() <
-    area.bigFishRate;
+  const totalWeight = bands.reduce(
+    (total, band) => total + band.weight,
+    0
+  );
 
-  let sizeMinimum =
-    area.sizeMin;
+  let selection =
+    Math.random() * totalWeight;
 
-  let sizeMaximum =
-    area.sizeMax;
+  return bands.find((band) => {
+    selection -= band.weight;
+    return selection < 0;
+  }) || bands[bands.length - 1];
+}
 
-  if (isBigFish) {
 
-    const normalSizeRange =
-      Math.max(
-        1,
-        area.sizeMax -
-        area.sizeMin
-      );
+function generateFishCatch(
+  environmentContext = {}
+) {
 
-    sizeMinimum =
-      area.sizeMax +
-      0.1;
+  /*
+    environmentContext は将来のエリア・季節・天候補正用。
+    現段階では分布へ影響させない。
+  */
+  void environmentContext;
 
-    sizeMaximum =
-      area.sizeMax +
-      normalSizeRange *
-      0.6;
-  }
+  const sizeBand =
+    chooseWeightedFishSizeBand(
+      fishSizeGenerationSettings.bands
+    );
 
   const sizeCm =
     Math.round(
       randomBetween(
-        sizeMinimum,
-        sizeMaximum
+        sizeBand.minimum,
+        sizeBand.maximum
       ) *
       10
     ) /
     10;
 
   return {
-    species: "BLACK BASS",
-    sizeCm,
-    isBigFish
+    species:
+      fishSizeGenerationSettings.species,
+    sizeCm
   };
+}
+
+
+function recordCaughtFish(
+  caughtFish
+) {
+
+  const previousBiggestFish =
+    gameSaveData.player.biggestFish;
+
+  const isNewRecord =
+    caughtFish.sizeCm >
+    previousBiggestFish;
+
+  gameSaveData =
+    saveRepository.update((data) => {
+      data.player.totalCatch += 1;
+
+      if (isNewRecord) {
+        data.player.biggestFish =
+          caughtFish.sizeCm;
+      }
+    });
+
+  return isNewRecord;
 }
 
 
@@ -1958,6 +2005,8 @@ function startFishingGauge() {
     "BLACK BASS";
 
   catchSize.textContent = "";
+  catchNewRecord.style.display =
+    "none";
 
   fishButton.style.display =
     "inline-block";
@@ -2469,6 +2518,9 @@ function showCatchPanel(
   caughtFish
 ) {
 
+  const isNewRecord =
+    recordCaughtFish(caughtFish);
+
   hitTitle.style.display =
     "none";
 
@@ -2494,6 +2546,9 @@ function showCatchPanel(
     caughtFish.sizeCm
       .toFixed(1) +
     " cm";
+
+  catchNewRecord.style.display =
+    isNewRecord ? "block" : "none";
 
   catchPanel.style.display =
     "flex";
@@ -2547,11 +2602,15 @@ function stopFishingGauge() {
   const caughtFish =
     caught ?
       generateFishCatch(
-        activeFishingArea ||
-        getFishingArea(
-          playerX,
-          playerY
-        )
+        {
+          area: activeFishingArea,
+          season:
+            environmentState.season,
+          temperature:
+            getCurrentTemperature(),
+          weather:
+            environmentState.weather
+        }
       ) :
       null;
 
@@ -2612,6 +2671,8 @@ function resetFishingSequence() {
   );
 
   catchSize.textContent = "";
+  catchNewRecord.style.display =
+    "none";
 
   fishButton.style.display =
     "inline-block";
