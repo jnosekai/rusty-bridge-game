@@ -811,6 +811,7 @@ html, body {
 
 </div>
 
+<script src="save-system.js"></script>
 <script>
 
 const game = document.getElementById("game");
@@ -855,6 +856,19 @@ const catchSpecies = document.getElementById("catchSpecies");
 const catchSize = document.getElementById("catchSize");
 const fishButton = document.getElementById("fishButton");
 const hitContinue = document.getElementById("hitContinue");
+
+
+/* =========================
+   永続セーブ
+========================= */
+
+const saveRepository =
+  GreenBoatSave.createRepository(
+    window.localStorage
+  );
+
+const gameSaveData =
+  saveRepository.load();
 
 
 /* =========================

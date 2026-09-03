@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>GREEN BOAT Save System Tests</title>
+  <style>
+    body { margin: 0; padding: 32px; background: #071c29; color: #fff; font: 16px sans-serif; }
+    h1 { color: #8dd047; }
+    li { margin: 10px 0; }
+    .pass { color: #9ee86c; }
+    .fail { color: #ff7b6f; }
+  </style>
+</head>
+<body>
+  <h1>Save System Tests</h1>
+  <ul id="results" aria-label="セーブシステムテスト結果"></ul>
+
+  <script src="save-system.js"></script>
+  <script>
+    const results = GreenBoatSave.runFoundationChecks();
+    const testStoragePrefix = "greenBoat.tests.";
+    const browserStorage = {
+      getItem(key) {
+        return window.localStorage.getItem(`${testStoragePrefix}${key}`);
+      },
+      setItem(key, value) {
+        window.localStorage.setItem(`${testStoragePrefix}${key}`, value);
+      }
+    };
+    const firstRepository = GreenBoatSave.createRepository(browserStorage);
+    const firstLoad = firstRepository.load();
+    const expectedCatchCount = firstLoad.player.totalCatch + 1;
+    firstRepository.update((data) => {
+      data.player.totalCatch = expectedCatchCount;
+    });
+    const reloadedRepository = GreenBoatSave.createRepository(browserStorage);
+    const reloadedSave = reloadedRepository.load();
+    results.localStorageReloadRetained =
+      reloadedSave.player.totalCatch === expectedCatchCount;
+    const list = document.getElementById("results");
+
+    for (const [name, passed] of Object.entries(results)) {
+      const item = document.createElement("li");
+      item.className = passed ? "pass" : "fail";
+      item.textContent = `${passed ? "PASS" : "FAIL"}: ${name}`;
+      list.appendChild(item);
+    }
+
+    document.body.dataset.allPassed =
+      String(Object.values(results).every(Boolean));
+  </script>
+</body>
+</html>
