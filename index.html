@@ -175,6 +175,64 @@ html, body {
   letter-spacing: 0.08em;
 }
 
+#seasonSelectModal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,0.78);
+  z-index: 120;
+}
+
+#seasonSelectBox {
+  width: min(390px, 100%);
+  padding: 26px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 14px;
+  background: #071c29;
+  color: white;
+  text-align: center;
+}
+
+#seasonSelectTitle {
+  color: #8dd047;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#seasonSelectSubtitle {
+  margin: 8px 0 20px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13px;
+}
+
+#seasonButtons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.seasonSelectButton {
+  padding: 14px 8px;
+  border: 2px solid rgba(255,255,255,0.88);
+  border-radius: 9px;
+  background: rgba(255,255,255,0.07);
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.seasonSelectButton:hover,
+.seasonSelectButton:focus-visible {
+  border-color: #8dd047;
+  background: rgba(141,208,71,0.18);
+}
+
 .speedBtn {
   padding: 9px 11px;
   border: 2px solid white;
@@ -810,8 +868,8 @@ html, body {
 
   <div id="environmentPanel" aria-label="環境情報">
     <div id="seasonText">SPRING</div>
-    <div id="temperatureText">12°C</div>
     <div id="weatherText">SUNNY</div>
+    <div id="temperatureText">12°C</div>
   </div>
 
   <div id="energyPanel">
@@ -836,6 +894,19 @@ html, body {
   </div>
 
   <button id="showMap">MAP</button>
+
+  <div id="seasonSelectModal" role="dialog" aria-modal="true" aria-labelledby="seasonSelectTitle">
+    <section id="seasonSelectBox">
+      <div id="seasonSelectTitle">SELECT SEASON</div>
+      <div id="seasonSelectSubtitle">出船する季節を選んでください</div>
+      <div id="seasonButtons">
+        <button class="seasonSelectButton" data-season="SPRING">SPRING</button>
+        <button class="seasonSelectButton" data-season="SUMMER">SUMMER</button>
+        <button class="seasonSelectButton" data-season="AUTUMN">AUTUMN</button>
+        <button class="seasonSelectButton" data-season="WINTER">WINTER</button>
+      </div>
+    </section>
+  </div>
 
   <!-- 帰還確認 -->
   <div id="returnModal">
@@ -940,9 +1011,12 @@ const showMap = document.getElementById("showMap");
 const energyText = document.getElementById("energyText");
 const energyBarInner = document.getElementById("energyBarInner");
 const gameClock = document.getElementById("gameClock");
+const environmentPanel = document.getElementById("environmentPanel");
 const seasonText = document.getElementById("seasonText");
 const temperatureText = document.getElementById("temperatureText");
 const weatherText = document.getElementById("weatherText");
+const seasonSelectModal = document.getElementById("seasonSelectModal");
+const seasonSelectButtons = document.querySelectorAll(".seasonSelectButton");
 
 const returnModal = document.getElementById("returnModal");
 const returnYes = document.getElementById("returnYes");
@@ -1001,7 +1075,8 @@ function createTripData() {
     catchCount: 0,
     biggestFish: 0,
     hasNewRecord: false,
-    completionSaved: false
+    completionSaved: false,
+    environment: null
   };
 }
 
@@ -1102,100 +1177,48 @@ let gameMinutes =
    季節・気温・天候設定
 ========================= */
 
-const environmentSettings = {
-  /* nullなら開始時に抽選。将来はタイトル画面の選択値を入れる。 */
-  selectedSeason: null,
-  seasons: [
-    "SPRING",
-    "SUMMER",
-    "AUTUMN",
-    "WINTER"
-  ],
-  dailyTemperatureOffset: {
-    minimum: 1,
-    maximum: 2
+const seasonConfig = {
+  SPRING: {
+    temperatureRange: { minimum: 8, maximum: 22 },
+    weatherWeights: { SUNNY: 50, CLOUDY: 35, RAIN: 15 },
+    hitRateMultiplier: 1,
+    bigFishMultiplier: 1,
+    sizeModifier: 0,
+    lureAffinity: {}
   },
-  weatherDurationMinutes: {
-    minimum: 60,
-    maximum: 180
+  SUMMER: {
+    temperatureRange: { minimum: 22, maximum: 35 },
+    weatherWeights: { SUNNY: 50, CLOUDY: 25, RAIN: 25 },
+    hitRateMultiplier: 1,
+    bigFishMultiplier: 1,
+    sizeModifier: 0,
+    lureAffinity: {}
   },
-  temperatureCurves: {
-    SPRING: [
-      [6 * 60, 12],
-      [9 * 60, 16],
-      [12 * 60, 20],
-      [15 * 60, 21],
-      [18 * 60, 17]
-    ],
-    SUMMER: [
-      [6 * 60, 24],
-      [9 * 60, 27],
-      [12 * 60, 31],
-      [15 * 60, 32],
-      [18 * 60, 28]
-    ],
-    AUTUMN: [
-      [6 * 60, 18],
-      [9 * 60, 22],
-      [12 * 60, 26],
-      [15 * 60, 25],
-      [18 * 60, 21]
-    ],
-    WINTER: [
-      [6 * 60, 5],
-      [9 * 60, 8],
-      [12 * 60, 11],
-      [15 * 60, 11],
-      [18 * 60, 8]
-    ]
+  AUTUMN: {
+    temperatureRange: { minimum: 10, maximum: 27 },
+    weatherWeights: { SUNNY: 60, CLOUDY: 30, RAIN: 10 },
+    hitRateMultiplier: 1,
+    bigFishMultiplier: 1,
+    sizeModifier: 0,
+    lureAffinity: {}
   },
-  weatherProbabilities: {
-    SPRING: {
-      SUNNY: 50,
-      CLOUDY: 35,
-      RAIN: 15
-    },
-    SUMMER: {
-      SUNNY: 50,
-      CLOUDY: 25,
-      RAIN: 25
-    },
-    AUTUMN: {
-      SUNNY: 60,
-      CLOUDY: 30,
-      RAIN: 10
-    },
-    WINTER: {
-      SUNNY: 65,
-      CLOUDY: 25,
-      RAIN: 10
-    }
-  },
-  transitionWeights: {
-    SUNNY: {
-      SUNNY: 0.22,
-      CLOUDY: 0.7,
-      RAIN: 0.08
-    },
-    CLOUDY: {
-      SUNNY: 0.36,
-      CLOUDY: 0.24,
-      RAIN: 0.4
-    },
-    RAIN: {
-      SUNNY: 0.07,
-      CLOUDY: 0.73,
-      RAIN: 0.2
-    }
+  WINTER: {
+    temperatureRange: { minimum: 0, maximum: 12 },
+    weatherWeights: { SUNNY: 65, CLOUDY: 25, RAIN: 10 },
+    hitRateMultiplier: 1,
+    bigFishMultiplier: 1,
+    sizeModifier: 0,
+    lureAffinity: {}
   }
 };
 
 const environmentState = {
-  season: "SPRING",
-  temperatureOffset: 0,
-  weather: "SUNNY",
-  nextWeatherChangeMinutes: Infinity
+  season: null,
+  temperature: null,
+  weather: null
 };
+
+let tripActive = false;
 
 
 /* =========================
@@ -2990,203 +3013,68 @@ function chooseWeightedValue(
 }
 
 
-function chooseNextWeather() {
-
-  const transitionWeights =
-    environmentSettings
-      .transitionWeights[
-        environmentState.weather
-      ];
-
-  const seasonalWeights =
-    environmentSettings
-      .weatherProbabilities[
-        environmentState.season
-      ];
-
-  const combinedWeights = {};
-
-  for (
-    const weather of
-    Object.keys(seasonalWeights)
-  ) {
-    combinedWeights[weather] =
-      transitionWeights[weather] *
-      seasonalWeights[weather];
-  }
-
-  return chooseWeightedValue(
-    combinedWeights
-  );
-}
-
-
-function scheduleNextWeatherCheck(
-  fromGameMinutes
+function generateTripEnvironment(
+  season
 ) {
 
-  environmentState
-    .nextWeatherChangeMinutes =
-      fromGameMinutes +
-      randomBetween(
-        environmentSettings
-          .weatherDurationMinutes
-          .minimum,
-        environmentSettings
-          .weatherDurationMinutes
-          .maximum
-      );
+  const config = seasonConfig[season];
+
+  if (!config) {
+    throw new Error(
+      `Unknown season: ${season}`
+    );
+  }
+
+  return {
+    season,
+    weather: chooseWeightedValue(
+      config.weatherWeights
+    ),
+    temperature:
+      Math.round(
+        randomBetween(
+          config.temperatureRange.minimum,
+          config.temperatureRange.maximum
+        ) * 10
+      ) / 10
+  };
 }
 
 
-function initializeEnvironment() {
-
-  const configuredSeason =
-    environmentSettings
-      .selectedSeason;
+function applyTripEnvironment(
+  environment
+) {
 
   environmentState.season =
-    environmentSettings
-      .seasons
-      .includes(configuredSeason) ?
-        configuredSeason :
-        environmentSettings
-          .seasons[
-            Math.floor(
-              Math.random() *
-              environmentSettings
-                .seasons.length
-            )
-          ];
-
-  const temperatureOffsetMagnitude =
-    randomBetween(
-      environmentSettings
-        .dailyTemperatureOffset
-        .minimum,
-      environmentSettings
-        .dailyTemperatureOffset
-        .maximum
-    );
-
-  environmentState.temperatureOffset =
-    (
-      Math.random() < 0.5 ?
-        -1 :
-        1
-    ) *
-    temperatureOffsetMagnitude;
-
+    environment.season;
   environmentState.weather =
-    chooseWeightedValue(
-      environmentSettings
-        .weatherProbabilities[
-          environmentState.season
-        ]
-    );
-
-  scheduleNextWeatherCheck(
-    gameMinutes
-  );
+    environment.weather;
+  environmentState.temperature =
+    environment.temperature;
 
   updateEnvironment();
 }
 
 
 function getCurrentTemperature() {
-
-  const temperatureCurve =
-    environmentSettings
-      .temperatureCurves[
-        environmentState.season
-      ];
-
-  for (
-    let index = 0;
-    index < temperatureCurve.length - 1;
-    index += 1
-  ) {
-
-    const [startMinute, startTemperature] =
-      temperatureCurve[index];
-
-    const [endMinute, endTemperature] =
-      temperatureCurve[index + 1];
-
-    if (
-      gameMinutes <= endMinute
-    ) {
-
-      const progress =
-        Math.max(
-          0,
-          Math.min(
-            1,
-            (
-              gameMinutes -
-              startMinute
-            ) /
-            (
-              endMinute -
-              startMinute
-            )
-          )
-        );
-
-      return (
-        startTemperature +
-        (
-          endTemperature -
-          startTemperature
-        ) *
-        progress +
-        environmentState
-          .temperatureOffset
-      );
-    }
-  }
-
-  return (
-    temperatureCurve.at(-1)[1] +
-    environmentState
-      .temperatureOffset
-  );
+  return environmentState.temperature;
 }
 
 
 function updateEnvironment() {
-
-  while (
-    gameMinutes >=
-      environmentState
-        .nextWeatherChangeMinutes &&
-    environmentState
-      .nextWeatherChangeMinutes <
-      gameTimeSettings.endMinutes
-  ) {
-
-    const weatherChangeMinute =
-      environmentState
-        .nextWeatherChangeMinutes;
-
-    environmentState.weather =
-      chooseNextWeather();
-
-    scheduleNextWeatherCheck(
-      weatherChangeMinute
-    );
-  }
-
   seasonText.textContent =
-    environmentState.season;
+    environmentState.season || "--";
 
   temperatureText.textContent =
-    getCurrentTemperature()
-      .toFixed(1) +
-    "°C";
+    Number.isFinite(
+      environmentState.temperature
+    ) ?
+      environmentState.temperature
+        .toFixed(1) + "°C" :
+      "--";
 
   weatherText.textContent =
-    environmentState.weather;
+    environmentState.weather || "--";
 }
 
 
@@ -3230,6 +3118,7 @@ function updateGameClock() {
 function shouldGameTimeAdvance() {
 
   return !(
+    !tripActive ||
     tripResultOpen ||
     (
       hitPromptOpen &&
@@ -3369,6 +3258,7 @@ function completeTrip() {
 
   renderTripResult();
 
+  tripActive = false;
   tripResultOpen = true;
   returnModal.style.display = "none";
   tripResultModal.style.display = "flex";
@@ -3378,6 +3268,7 @@ function completeTrip() {
 function resetTrip() {
 
   tripData = createTripData();
+  tripActive = false;
 
   playerX = dockX;
   playerY = dockY;
@@ -3387,7 +3278,9 @@ function resetTrip() {
   gameMinutes =
     gameTimeSettings.startMinutes;
 
-  initializeEnvironment();
+  environmentState.season = null;
+  environmentState.weather = null;
+  environmentState.temperature = null;
 
   hasLeftDock = false;
 
@@ -3413,6 +3306,12 @@ function resetTrip() {
   tripResultModal.style.display =
     "none";
 
+  seasonSelectModal.style.display =
+    "flex";
+
+  environmentPanel.style.display =
+    "none";
+
   hitModal.style.display =
     "none";
 
@@ -3422,8 +3321,52 @@ function resetTrip() {
 
   updateEnergy();
   updateGameClock();
+  updateEnvironment();
   updateWorld();
 }
+
+
+function startTripWithSeason(
+  season
+) {
+
+  if (
+    tripActive ||
+    !seasonConfig[season]
+  ) {
+    return;
+  }
+
+  const environment =
+    generateTripEnvironment(season);
+
+  tripData.environment = {
+    ...environment
+  };
+
+  applyTripEnvironment(
+    tripData.environment
+  );
+
+  tripActive = true;
+  seasonSelectModal.style.display =
+    "none";
+  environmentPanel.style.display =
+    "block";
+  clearMovementInput();
+}
+
+
+seasonSelectButtons.forEach(
+  (button) => {
+    button.addEventListener(
+      "click",
+      () => startTripWithSeason(
+        button.dataset.season
+      )
+    );
+  }
+);
 
 
 /* =========================
@@ -3567,6 +3510,7 @@ function gameLoop(currentFrameTime) {
     帰還確認中・HIT表示中は船を止める
   */
   if (
+    tripActive &&
     !returnPromptOpen &&
     !hitPromptOpen &&
     gameMinutes <
@@ -4002,15 +3946,7 @@ window.addEventListener(
 );
 
 
-updateEnergy();
-updateGameClock();
-initializeEnvironment();
-
-currentFishingAreaKey =
-  getFishingArea(
-    playerX,
-    playerY
-  ).id;
+resetTrip();
 
 requestAnimationFrame(
   gameLoop
