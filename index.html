@@ -31,7 +31,7 @@ html, body {
   position: absolute;
   left: 0;
   top: 0;
-  height: 900%;
+  height: var(--world-height, 900%);
 }
 
 #map {
@@ -1380,6 +1380,26 @@ let returnPromptOpen = false;
 let returnPromptBlocked = false;
 
 let tripResultOpen = false;
+
+
+/* =========================
+   ゲーム世界スケール
+========================= */
+
+const worldScaleSettings = {
+  baseHeightViewportPercent: 900,
+  distanceMultiplier: 2
+};
+
+world.style.setProperty(
+  "--world-height",
+  (
+    worldScaleSettings
+      .baseHeightViewportPercent *
+    worldScaleSettings
+      .distanceMultiplier
+  ) + "%"
+);
 
 
 /* =========================
@@ -3831,16 +3851,21 @@ function gameLoop(currentFrameTime) {
       const directionLength =
         Math.hypot(dx, dy);
 
+      const scaledMovementSpeed =
+        speed /
+        worldScaleSettings
+          .distanceMultiplier;
+
       dx =
         dx /
         directionLength *
-        speed *
+        scaledMovementSpeed *
         movementDeltaSeconds;
 
       dy =
         dy /
         directionLength *
-        speed *
+        scaledMovementSpeed *
         movementDeltaSeconds;
 
       const nextX =
