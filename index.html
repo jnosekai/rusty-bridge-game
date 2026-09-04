@@ -63,21 +63,6 @@ html, body {
   image-rendering: auto;
 }
 
-.dockTileOverlay {
-  -webkit-mask-image: radial-gradient(
-    ellipse 22% 12% at 42% 88%,
-    #000 0,
-    #000 40%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 22% 12% at 42% 88%,
-    #000 0,
-    #000 40%,
-    transparent 100%
-  );
-}
-
 .mapTileFrame.blendTop {
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -1835,9 +1820,14 @@ function renderMapTiles() {
     const image = document.createElement("img");
     const hasLeftNeighbor = tile.column > 0;
     const hasTopNeighbor = tile.row > 0;
+    const preservesOriginalAppearance =
+      tile.id === "02";
 
     frame.className = "mapTileFrame";
-    if (hasTopNeighbor) {
+    if (
+      hasTopNeighbor &&
+      !preservesOriginalAppearance
+    ) {
       frame.classList.add("blendTop");
     }
 
@@ -1850,7 +1840,9 @@ function renderMapTiles() {
     frame.style.height =
       tile.heightPercent + "%";
     frame.style.zIndex = String(
-      tile.row * settings.columns + tile.column + 1
+      preservesOriginalAppearance
+        ? 100
+        : tile.row * settings.columns + tile.column + 1
     );
     frame.style.setProperty(
       "--tile-feather",
@@ -1858,7 +1850,10 @@ function renderMapTiles() {
     );
 
     image.className = "mapTileImage";
-    if (hasLeftNeighbor) {
+    if (
+      hasLeftNeighbor &&
+      !preservesOriginalAppearance
+    ) {
       image.classList.add("blendLeft");
     }
     image.src = tile.imagePath;
@@ -1880,14 +1875,6 @@ function renderMapTiles() {
 
     frame.append(image);
     mapTiles.append(frame);
-
-    if (tile.id === "02") {
-      const dockFrame = frame.cloneNode(true);
-      dockFrame.className =
-        "mapTileFrame dockTileOverlay";
-      dockFrame.style.zIndex = "100";
-      mapTiles.append(dockFrame);
-    }
   });
 }
 
