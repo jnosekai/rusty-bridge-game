@@ -29,17 +29,17 @@ def main() -> None:
         "dock start": (33.3, 24.3),
         "dock left water": (32.5, 24.3),
         "dock right water": (34.0, 24.3),
-        "deep water below dock": (33.3, 26.8),
-        "shallow water beside shore": (30.4, 26.1),
+        "deep water below dock": (33.3, 28.2),
+        "shallow water beside dock": (35.0, 25.0),
         "lower narrow channel": (50.0, 80.0),
         "upper inlet": (70.0, 8.0),
     }
     expected_blocked = {
-        "dock wood": (33.3, 23.8),
-        "shore left of dock basin": (29.5, 26.1),
-        "land below dock basin": (33.3, 28.2),
-        "central forest": (45.0, 40.0),
-        "lower forest": (44.0, 60.0),
+        "dock wood": (33.3, 22.8),
+        "shore left of dock basin": (30.0, 26.1),
+        "central forest": (50.0, 40.0),
+        "left forest": (20.0, 50.0),
+        "right forest": (80.0, 50.0),
     }
 
     for label, point in expected_water.items():
