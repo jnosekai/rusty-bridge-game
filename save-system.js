@@ -3,7 +3,7 @@
 
   const SAVE_KEY = "greenBoat.saveData";
   const CORRUPT_BACKUP_PREFIX = "greenBoat.saveData.backup.";
-  const CURRENT_SAVE_VERSION = 1;
+  const CURRENT_SAVE_VERSION = 2;
 
   function clone(value) {
     if (value === undefined) return undefined;
@@ -23,6 +23,9 @@
         biggestFish: 0,
         totalCatch: 0,
         totalTrips: 0
+      },
+      loadout: {
+        selectedLureId: "popper_natural"
       },
       cards: [],
       items: [],
@@ -108,6 +111,17 @@
 
       migrated.saveVersion = 1;
       return migrated;
+    },
+    1(oldSave) {
+      const migrated = isPlainObject(oldSave) ? clone(oldSave) : {};
+      migrated.loadout = isPlainObject(migrated.loadout)
+        ? migrated.loadout
+        : {};
+      if (typeof migrated.loadout.selectedLureId !== "string") {
+        migrated.loadout.selectedLureId = "popper_natural";
+      }
+      migrated.saveVersion = 2;
+      return migrated;
     }
   };
 
@@ -159,6 +173,10 @@
       }
     }
 
+    if (source.loadout !== undefined && !isPlainObject(source.loadout)) {
+      recovery.loadout = clone(source.loadout);
+    }
+
     const normalized = mergeMissing(createDefaultSave(), source);
 
     normalized.player.biggestFish = normalizeNonNegativeNumber(
@@ -170,6 +188,12 @@
     normalized.player.totalTrips = normalizeNonNegativeNumber(
       normalized.player.totalTrips, 0, "player.totalTrips", recovery
     );
+
+    if (typeof normalized.loadout.selectedLureId !== "string") {
+      recovery["loadout.selectedLureId"] =
+        clone(normalized.loadout.selectedLureId);
+      normalized.loadout.selectedLureId = "popper_natural";
+    }
 
     normalized.cards = normalizeIdList(normalized.cards, "cards", recovery);
     normalized.items = normalizeIdList(normalized.items, "items", recovery);
@@ -313,6 +337,7 @@
     firstRepository.update(data => {
       data.player.biggestFish = 51.2;
       data.player.totalCatch = 7;
+      data.loadout.selectedLureId = "straight_worm_green_pumpkin";
       data.cards.push("card_001");
       data.futureExtension = { retained: true };
     });
@@ -335,10 +360,12 @@
     return {
       initialSaveCreated: initial.saveVersion === CURRENT_SAVE_VERSION,
       reloadRetained: reloaded.player.biggestFish === 51.2 &&
+        reloaded.loadout.selectedLureId === "straight_worm_green_pumpkin" &&
         reloaded.cards.includes("card_001") &&
         reloaded.futureExtension.retained === true,
       legacyMigrated: migrated.saveVersion === CURRENT_SAVE_VERSION &&
         migrated.player.biggestFish === 48.6 &&
+        migrated.loadout.selectedLureId === "popper_natural" &&
         migrated.cards.includes("card_001") &&
         migrated.items.includes("item_001") &&
         Array.isArray(migrated.achievements) &&

@@ -333,6 +333,122 @@ html, body {
   z-index: 40;
 }
 
+/* 現在のルアー */
+#currentLureButton {
+  position: absolute;
+  left: 20px;
+  bottom: 184px;
+  display: none;
+  width: 160px;
+  min-height: 62px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 9px;
+  background: rgba(0,0,0,0.68);
+  color: white;
+  z-index: 50;
+}
+
+#currentLureImage {
+  width: 66px;
+  height: 42px;
+  object-fit: contain;
+}
+
+#currentLureLabel {
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-align: left;
+}
+
+#lureSelectModal {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0,0,0,0.76);
+  z-index: 115;
+}
+
+#lureSelectBox {
+  width: min(620px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 22px;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 14px;
+  background: #071c29;
+  color: white;
+  text-align: center;
+}
+
+#lureSelectTitle {
+  color: #8dd047;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+#lureOptions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.lureOption {
+  position: relative;
+  min-width: 0;
+  padding: 10px;
+  border: 2px solid rgba(255,255,255,0.34);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  color: white;
+}
+
+.lureOption.selected {
+  border-color: #8dd047;
+  background: rgba(141,208,71,0.14);
+}
+
+.lureOption img {
+  width: 100%;
+  height: 92px;
+  object-fit: contain;
+}
+
+.lureOptionName {
+  min-height: 30px;
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.lureSelectedBadge {
+  min-height: 16px;
+  color: #8dd047;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+#closeLureSelect {
+  width: min(260px, 100%);
+  padding: 11px;
+  border: 2px solid white;
+  border-radius: 9px;
+  background: transparent;
+  color: white;
+  font-size: 15px;
+  font-weight: 900;
+}
+
 /* 帰還確認画面 */
 #returnModal {
   position: absolute;
@@ -806,6 +922,27 @@ html, body {
     width: 130px;
   }
 
+  #currentLureButton {
+    left: 10px;
+    bottom: 178px;
+    width: 145px;
+  }
+
+  #lureOptions {
+    grid-template-columns: 1fr;
+  }
+
+  .lureOption {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+  }
+
+  .lureOption img {
+    grid-row: 1 / span 2;
+    height: 64px;
+  }
+
   #speedControls {
     right: 10px;
     top: 10px;
@@ -894,6 +1031,19 @@ html, body {
   </div>
 
   <button id="showMap">MAP</button>
+
+  <button id="currentLureButton" aria-label="ルアーを変更">
+    <img id="currentLureImage" alt="">
+    <span id="currentLureLabel"></span>
+  </button>
+
+  <div id="lureSelectModal" role="dialog" aria-modal="true" aria-labelledby="lureSelectTitle">
+    <section id="lureSelectBox">
+      <div id="lureSelectTitle">SELECT LURE</div>
+      <div id="lureOptions"></div>
+      <button id="closeLureSelect">CLOSE</button>
+    </section>
+  </div>
 
   <div id="seasonSelectModal" role="dialog" aria-modal="true" aria-labelledby="seasonSelectTitle">
     <section id="seasonSelectBox">
@@ -996,6 +1146,7 @@ html, body {
 </div>
 
 <script src="fishing-area-system.js"></script>
+<script src="lure-system.js"></script>
 <script src="save-system.js"></script>
 <script>
 
@@ -1018,6 +1169,12 @@ const temperatureText = document.getElementById("temperatureText");
 const weatherText = document.getElementById("weatherText");
 const seasonSelectModal = document.getElementById("seasonSelectModal");
 const seasonSelectButtons = document.querySelectorAll(".seasonSelectButton");
+const currentLureButton = document.getElementById("currentLureButton");
+const currentLureImage = document.getElementById("currentLureImage");
+const currentLureLabel = document.getElementById("currentLureLabel");
+const lureSelectModal = document.getElementById("lureSelectModal");
+const lureOptions = document.getElementById("lureOptions");
+const closeLureSelect = document.getElementById("closeLureSelect");
 
 const returnModal = document.getElementById("returnModal");
 const returnYes = document.getElementById("returnYes");
@@ -1065,6 +1222,20 @@ const saveRepository =
 let gameSaveData =
   saveRepository.load();
 
+let selectedLure =
+  GreenBoatLures.getSafeSelectedLure(
+    gameSaveData.loadout.selectedLureId
+  );
+
+if (
+  selectedLure.id !==
+  gameSaveData.loadout.selectedLureId
+) {
+  gameSaveData = saveRepository.update((data) => {
+    data.loadout.selectedLureId = selectedLure.id;
+  });
+}
+
 
 /* =========================
    出船中の一時釣果
@@ -1083,6 +1254,90 @@ function createTripData() {
 
 
 let tripData = createTripData();
+
+let lureSelectionOpen = false;
+
+
+function renderCurrentLure() {
+  currentLureImage.src = selectedLure.image;
+  currentLureImage.alt = selectedLure.name;
+  currentLureLabel.textContent = selectedLure.name;
+}
+
+
+function renderLureOptions() {
+  lureOptions.replaceChildren();
+
+  for (const lure of GreenBoatLures.getUnlockedLures()) {
+    const option = document.createElement("button");
+    const image = document.createElement("img");
+    const name = document.createElement("div");
+    const badge = document.createElement("div");
+    const isSelected = lure.id === selectedLure.id;
+
+    option.type = "button";
+    option.className =
+      "lureOption" + (isSelected ? " selected" : "");
+    option.setAttribute("aria-pressed", String(isSelected));
+    option.setAttribute("aria-label", `${lure.name}を選択`);
+
+    image.src = lure.image;
+    image.alt = lure.name;
+    name.className = "lureOptionName";
+    name.textContent = lure.name;
+    badge.className = "lureSelectedBadge";
+    badge.textContent = isSelected ? "SELECTED" : "";
+
+    option.append(image, name, badge);
+    option.addEventListener("click", () => selectLure(lure.id));
+    lureOptions.appendChild(option);
+  }
+}
+
+
+function closeLureSelection() {
+  lureSelectionOpen = false;
+  lureSelectModal.style.display = "none";
+  clearMovementInput();
+}
+
+
+function selectLure(lureId) {
+  const lure = GreenBoatLures.getLureById(lureId);
+  if (!lure?.unlocked) return;
+
+  selectedLure = lure;
+  gameSaveData = saveRepository.update((data) => {
+    data.loadout.selectedLureId = lure.id;
+  });
+
+  renderCurrentLure();
+  closeLureSelection();
+}
+
+
+function openLureSelection() {
+  if (
+    !tripActive ||
+    lureSelectionOpen ||
+    returnPromptOpen ||
+    hitPromptOpen ||
+    tripResultOpen
+  ) {
+    return;
+  }
+
+  lureSelectionOpen = true;
+  clearMovementInput();
+  renderLureOptions();
+  lureSelectModal.style.display = "flex";
+  closeLureSelect.focus();
+}
+
+
+currentLureButton.addEventListener("click", openLureSelection);
+closeLureSelect.addEventListener("click", closeLureSelection);
+renderCurrentLure();
 
 
 /* =========================
@@ -3139,6 +3394,7 @@ function shouldGameTimeAdvance() {
 
   return !(
     !tripActive ||
+    lureSelectionOpen ||
     tripResultOpen ||
     (
       hitPromptOpen &&
@@ -3280,6 +3536,8 @@ function completeTrip() {
 
   tripActive = false;
   tripResultOpen = true;
+  closeLureSelection();
+  currentLureButton.style.display = "none";
   returnModal.style.display = "none";
   tripResultModal.style.display = "flex";
   nextTripButton.focus();
@@ -3289,6 +3547,7 @@ function resetTrip() {
 
   tripData = createTripData();
   tripActive = false;
+  closeLureSelection();
 
   playerX = dockX;
   playerY = dockY;
@@ -3332,6 +3591,9 @@ function resetTrip() {
   environmentPanel.style.display =
     "none";
 
+  currentLureButton.style.display =
+    "none";
+
   hitModal.style.display =
     "none";
 
@@ -3373,6 +3635,9 @@ function startTripWithSeason(
     "none";
   environmentPanel.style.display =
     "block";
+  currentLureButton.style.display =
+    "flex";
+  renderCurrentLure();
   clearMovementInput();
 }
 
@@ -3531,6 +3796,7 @@ function gameLoop(currentFrameTime) {
   */
   if (
     tripActive &&
+    !lureSelectionOpen &&
     !returnPromptOpen &&
     !hitPromptOpen &&
     gameMinutes <
@@ -3731,6 +3997,7 @@ document.addEventListener(
     }
 
     if (
+      lureSelectionOpen ||
       returnPromptOpen
     ) {
       return;
@@ -3817,6 +4084,7 @@ function setupButton(
       e.preventDefault();
 
       if (
+        lureSelectionOpen ||
         returnPromptOpen ||
         hitPromptOpen
       ) {
