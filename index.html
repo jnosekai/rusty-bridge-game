@@ -63,6 +63,21 @@ html, body {
   image-rendering: auto;
 }
 
+.dockTileOverlay {
+  -webkit-mask-image: radial-gradient(
+    ellipse 22% 12% at 42% 88%,
+    #000 0,
+    #000 40%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    ellipse 22% 12% at 42% 88%,
+    #000 0,
+    #000 40%,
+    transparent 100%
+  );
+}
+
 .mapTileFrame.blendTop {
   -webkit-mask-image: linear-gradient(
     to bottom,
@@ -109,16 +124,6 @@ html, body {
     #000 var(--tile-feather, 5%),
     #000 100%
   );
-}
-
-#dockVisual {
-  position: absolute;
-  width: var(--dock-screen-width, 64px);
-  height: auto;
-  transform: translate(-50%, -50%);
-  z-index: 15;
-  pointer-events: none;
-  image-rendering: auto;
 }
 
 /* ボート */
@@ -996,10 +1001,6 @@ html, body {
     width: 36px;
   }
 
-  #dockVisual {
-    --dock-screen-width: 48px;
-  }
-
   #minimap {
     width: 130px;
   }
@@ -1076,7 +1077,6 @@ html, body {
     <div id="mapTiles" aria-hidden="true"></div>
   </div>
 
-  <canvas id="dockVisual" aria-hidden="true"></canvas>
   <img id="boat" src="boat.png" alt="Boat">
 
   <div id="speedControls">
@@ -1238,7 +1238,6 @@ const game = document.getElementById("game");
 const world = document.getElementById("world");
 const map = document.getElementById("map");
 const mapTiles = document.getElementById("mapTiles");
-const dockVisual = document.getElementById("dockVisual");
 const boat = document.getElementById("boat");
 
 const miniMapImage = document.getElementById("miniMapImage");
@@ -1518,19 +1517,21 @@ const mapPresentationSettings = {
             ? 33
             : dimensions[1] / 4340 * 100,
         zoom: 1,
-        offsetXPercent: index === 5 ? -28 : 0,
-        offsetYPercent: index === 5 ? 19 : 0
+        offsetXPercent:
+          index === 1
+            ? -1
+            : index === 5
+              ? -28
+              : 0,
+        offsetYPercent:
+          index === 1
+            ? 14.5
+            : index === 5
+              ? 19
+              : 0
       };
     }
-  ),
-  dock: {
-    centerXPercent: 33.32,
-    centerYPercent: 23.39,
-    sourceLeftPercent: 32.55,
-    sourceTopPercent: 22.6,
-    sourceWidthPercent: 1.55,
-    sourceHeightPercent: 1.58
-  }
+  )
 };
 
 map.src =
@@ -1848,8 +1849,9 @@ function renderMapTiles() {
       tile.widthPercent + "%";
     frame.style.height =
       tile.heightPercent + "%";
-    frame.style.zIndex =
-      String(tile.row * settings.columns + tile.column + 1);
+    frame.style.zIndex = String(
+      tile.row * settings.columns + tile.column + 1
+    );
     frame.style.setProperty(
       "--tile-feather",
       settings.tileFeatherPercent + "%"
@@ -1878,83 +1880,17 @@ function renderMapTiles() {
 
     frame.append(image);
     mapTiles.append(frame);
+
+    if (tile.id === "02") {
+      const dockFrame = frame.cloneNode(true);
+      dockFrame.className =
+        "mapTileFrame dockTileOverlay";
+      dockFrame.style.zIndex = "100";
+      mapTiles.append(dockFrame);
+    }
   });
 }
 
-
-function prepareDockPresentation() {
-  const dock =
-    mapPresentationSettings.dock;
-
-  const sourceWidth = map.naturalWidth;
-  const sourceHeight = map.naturalHeight;
-
-  const dockLeft = Math.round(
-    sourceWidth * dock.sourceLeftPercent / 100
-  );
-  const dockTop = Math.round(
-    sourceHeight * dock.sourceTopPercent / 100
-  );
-  const dockWidth = Math.max(
-    1,
-    Math.round(
-      sourceWidth * dock.sourceWidthPercent / 100
-    )
-  );
-  const dockHeight = Math.max(
-    1,
-    Math.round(
-      sourceHeight * dock.sourceHeightPercent / 100
-    )
-  );
-
-  dockVisual.width = dockWidth * 2;
-  dockVisual.height = dockHeight * 2;
-  dockVisual.style.aspectRatio =
-    dockWidth + " / " + dockHeight;
-
-  const dockContext =
-    dockVisual.getContext("2d");
-
-  dockContext.clearRect(
-    0,
-    0,
-    dockVisual.width,
-    dockVisual.height
-  );
-  dockContext.save();
-  dockContext.beginPath();
-  dockContext.moveTo(
-    dockVisual.width * 0.17,
-    0
-  );
-  dockContext.lineTo(
-    dockVisual.width * 0.83,
-    0
-  );
-  dockContext.lineTo(
-    dockVisual.width * 0.94,
-    dockVisual.height
-  );
-  dockContext.lineTo(
-    dockVisual.width * 0.06,
-    dockVisual.height
-  );
-  dockContext.closePath();
-  dockContext.clip();
-  dockContext.drawImage(
-    map,
-    dockLeft,
-    dockTop,
-    dockWidth,
-    dockHeight,
-    0,
-    0,
-    dockVisual.width,
-    dockVisual.height
-  );
-  dockContext.restore();
-}
 
 function prepareMap() {
 
@@ -1973,8 +1909,6 @@ function prepareMap() {
     collisionCanvas.width,
     collisionCanvas.height
   );
-
-  prepareDockPresentation();
 
   mapReady = true;
 
@@ -3771,29 +3705,6 @@ function updateWorld() {
     (
       game.clientHeight / 2 -
       playerPixelY
-    ) + "px";
-
-  const dockPresentation =
-    mapPresentationSettings.dock;
-
-  dockVisual.style.left =
-    (
-      game.clientWidth / 2 +
-      map.offsetWidth *
-      (
-        dockPresentation.centerXPercent -
-        playerX
-      ) / 100
-    ) + "px";
-
-  dockVisual.style.top =
-    (
-      game.clientHeight / 2 +
-      map.offsetHeight *
-      (
-        dockPresentation.centerYPercent -
-        playerY
-      ) / 100
     ) + "px";
 
   miniPlayer.style.left =
