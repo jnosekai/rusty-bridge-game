@@ -1464,6 +1464,11 @@ const collisionCtx =
     { willReadFrequently: true }
   );
 
+const navigationMaskImage =
+  new Image();
+
+let navigationMaskPixels = null;
+
 let mapReady = false;
 
 
@@ -1507,7 +1512,7 @@ const worldScaleSettings = {
   ゲーム世界の大きさ・座標・衝突判定とは独立している。
 */
 const mapPresentationSettings = {
-  collisionImagePath: "map.jpg",
+  worldSizingImagePath: "map.jpg",
   minimapImagePath: "kanogawa_map_００.png",
   columns: 4,
   rows: 5,
@@ -1559,10 +1564,17 @@ const mapPresentationSettings = {
   )
 };
 
+const navigationMaskSettings = {
+  imagePath: "navigation-mask.png",
+  navigableThreshold: 128
+};
+
 map.src =
-  mapPresentationSettings.collisionImagePath;
+  mapPresentationSettings.worldSizingImagePath;
 miniMapImage.src =
   mapPresentationSettings.minimapImagePath;
+navigationMaskImage.src =
+  navigationMaskSettings.imagePath;
 
 world.style.setProperty(
   "--world-height",
@@ -1926,23 +1938,49 @@ function prepareMap() {
 
   renderMapTiles();
 
+  updateWorld();
+}
+
+
+function prepareNavigationMask() {
+
   collisionCanvas.width =
-    map.naturalWidth;
+    navigationMaskImage.naturalWidth;
 
   collisionCanvas.height =
-    map.naturalHeight;
+    navigationMaskImage.naturalHeight;
 
   collisionCtx.drawImage(
-    map,
+    navigationMaskImage,
     0,
     0,
     collisionCanvas.width,
     collisionCanvas.height
   );
 
+  navigationMaskPixels =
+    collisionCtx.getImageData(
+      0,
+      0,
+      collisionCanvas.width,
+      collisionCanvas.height
+    ).data;
+
   mapReady = true;
 
   updateWorld();
+}
+
+if (navigationMaskImage.complete) {
+
+  prepareNavigationMask();
+
+} else {
+
+  navigationMaskImage.addEventListener(
+    "load",
+    prepareNavigationMask
+  );
 }
 
 
@@ -1997,22 +2035,17 @@ function isWater(
     return false;
   }
 
-  const pixel =
-    collisionCtx.getImageData(
-      px,
-      py,
-      1,
-      1
-    ).data;
-
-  const r = pixel[0];
-  const g = pixel[1];
-  const b = pixel[2];
+  const pixelIndex =
+    (
+      py * collisionCanvas.width + px
+    ) * 4;
 
   return (
-    b > 100 &&
-    b > r * 1.25 &&
-    b > g * 1.05
+    navigationMaskPixels[
+      pixelIndex
+    ] >=
+    navigationMaskSettings
+      .navigableThreshold
   );
 }
 
