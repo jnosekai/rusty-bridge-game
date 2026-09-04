@@ -37,10 +37,34 @@ html, body {
 #map {
   height: 100%;
   width: auto;
+  max-width: none;
+  max-height: none;
   display: block;
+  image-rendering: auto;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+/*
+  map.jpg に描き込まれている桟橋だけを表示上で分離する。
+  元画像は衝突判定にそのまま使うため、ゲーム座標には影響しない。
+*/
+#dockMapMask {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  image-rendering: auto;
+}
+
+#dockVisual {
+  position: absolute;
+  width: var(--dock-screen-width, 64px);
+  height: auto;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  pointer-events: none;
+  image-rendering: auto;
 }
 
 /* ボート */
@@ -918,6 +942,10 @@ html, body {
     width: 36px;
   }
 
+  #dockVisual {
+    --dock-screen-width: 48px;
+  }
+
   #minimap {
     width: 130px;
   }
@@ -990,9 +1018,11 @@ html, body {
 <div id="game">
 
   <div id="world">
-    <img id="map" src="map.jpg" alt="Game Map">
+    <img id="map" src="map.jpg" alt="Game Map" decoding="async">
+    <canvas id="dockMapMask" aria-hidden="true"></canvas>
   </div>
 
+  <canvas id="dockVisual" aria-hidden="true"></canvas>
   <img id="boat" src="boat.png" alt="Boat">
 
   <div id="speedControls">
@@ -1153,8 +1183,11 @@ html, body {
 const game = document.getElementById("game");
 const world = document.getElementById("world");
 const map = document.getElementById("map");
+const dockMapMask = document.getElementById("dockMapMask");
+const dockVisual = document.getElementById("dockVisual");
 const boat = document.getElementById("boat");
 
+const miniMapImage = document.getElementById("miniMapImage");
 const miniPlayer = document.getElementById("miniPlayer");
 const minimap = document.getElementById("minimap");
 const closeMap = document.getElementById("closeMap");
@@ -1390,6 +1423,29 @@ const worldScaleSettings = {
   baseHeightViewportPercent: 900,
   distanceMultiplier: 2
 };
+
+/*
+  高解像度マップへの差し替えはここだけを変更する。
+  ゲーム世界の大きさ・座標・衝突判定とは独立している。
+*/
+const mapPresentationSettings = {
+  imagePath: "map.jpg",
+  dock: {
+    centerXPercent: 33.32,
+    centerYPercent: 23.39,
+    sourceLeftPercent: 32.55,
+    sourceTopPercent: 22.6,
+    sourceWidthPercent: 1.55,
+    sourceHeightPercent: 1.58,
+    maskLeftPercent: 32.25,
+    maskTopPercent: 22.15,
+    maskWidthPercent: 2.15,
+    maskHeightPercent: 2.2
+  }
+};
+
+map.src = mapPresentationSettings.imagePath;
+miniMapImage.src = mapPresentationSettings.imagePath;
 
 world.style.setProperty(
   "--world-height",
@@ -1677,6 +1733,167 @@ const processedLogoCache =
    マップ読み込み
 ========================= */
 
+function prepareDockPresentation() {
+  const dock =
+    mapPresentationSettings.dock;
+
+  const sourceWidth = map.naturalWidth;
+  const sourceHeight = map.naturalHeight;
+
+  const maskLeft = Math.round(
+    sourceWidth * dock.maskLeftPercent / 100
+  );
+  const maskTop = Math.round(
+    sourceHeight * dock.maskTopPercent / 100
+  );
+  const maskWidth = Math.max(
+    1,
+    Math.round(
+      sourceWidth * dock.maskWidthPercent / 100
+    )
+  );
+  const maskHeight = Math.max(
+    1,
+    Math.round(
+      sourceHeight * dock.maskHeightPercent / 100
+    )
+  );
+
+  const maskPixels = collisionCtx.getImageData(
+    maskLeft,
+    maskTop,
+    maskWidth,
+    maskHeight
+  );
+
+  const maskData = maskPixels.data;
+
+  for (let y = 0; y < maskHeight; y += 1) {
+    const patchStart = Math.round(
+      maskWidth * 0.04
+    );
+    const patchEnd = Math.round(
+      maskWidth * 0.96
+    );
+
+    /* 桟橋の外側にある岸・水面だけを補間元にする */
+    const leftSample = 0;
+    const rightSample = maskWidth - 1;
+
+    for (let x = 0; x < maskWidth; x += 1) {
+      const pixelIndex =
+        (y * maskWidth + x) * 4;
+
+      if (
+        x < patchStart ||
+        x > patchEnd
+      ) {
+        maskData[pixelIndex + 3] = 0;
+        continue;
+      }
+
+      const blend =
+        (x - patchStart) /
+        Math.max(1, patchEnd - patchStart);
+
+      const leftIndex =
+        (y * maskWidth + leftSample) * 4;
+      const rightIndex =
+        (y * maskWidth + rightSample) * 4;
+
+      for (let channel = 0; channel < 3; channel += 1) {
+        maskData[pixelIndex + channel] = Math.round(
+          maskData[leftIndex + channel] * (1 - blend) +
+          maskData[rightIndex + channel] * blend
+        );
+      }
+
+      maskData[pixelIndex + 3] = 255;
+    }
+  }
+
+  dockMapMask.width = maskWidth;
+  dockMapMask.height = maskHeight;
+  dockMapMask.style.left =
+    dock.maskLeftPercent + "%";
+  dockMapMask.style.top =
+    dock.maskTopPercent + "%";
+  dockMapMask.style.width =
+    dock.maskWidthPercent + "%";
+  dockMapMask.style.height =
+    dock.maskHeightPercent + "%";
+
+  dockMapMask
+    .getContext("2d")
+    .putImageData(maskPixels, 0, 0);
+
+  const dockLeft = Math.round(
+    sourceWidth * dock.sourceLeftPercent / 100
+  );
+  const dockTop = Math.round(
+    sourceHeight * dock.sourceTopPercent / 100
+  );
+  const dockWidth = Math.max(
+    1,
+    Math.round(
+      sourceWidth * dock.sourceWidthPercent / 100
+    )
+  );
+  const dockHeight = Math.max(
+    1,
+    Math.round(
+      sourceHeight * dock.sourceHeightPercent / 100
+    )
+  );
+
+  dockVisual.width = dockWidth * 2;
+  dockVisual.height = dockHeight * 2;
+  dockVisual.style.aspectRatio =
+    dockWidth + " / " + dockHeight;
+
+  const dockContext =
+    dockVisual.getContext("2d");
+
+  dockContext.clearRect(
+    0,
+    0,
+    dockVisual.width,
+    dockVisual.height
+  );
+  dockContext.save();
+  dockContext.beginPath();
+  dockContext.moveTo(
+    dockVisual.width * 0.17,
+    0
+  );
+  dockContext.lineTo(
+    dockVisual.width * 0.83,
+    0
+  );
+  dockContext.lineTo(
+    dockVisual.width * 0.94,
+    dockVisual.height
+  );
+  dockContext.lineTo(
+    dockVisual.width * 0.06,
+    dockVisual.height
+  );
+  dockContext.closePath();
+  dockContext.clip();
+  dockContext.drawImage(
+    map,
+    dockLeft,
+    dockTop,
+    dockWidth,
+    dockHeight,
+    0,
+    0,
+    dockVisual.width,
+    dockVisual.height
+  );
+  dockContext.restore();
+}
+
 function prepareMap() {
 
   collisionCanvas.width =
@@ -1692,6 +1909,8 @@ function prepareMap() {
     collisionCanvas.width,
     collisionCanvas.height
   );
+
+  prepareDockPresentation();
 
   mapReady = true;
 
@@ -3488,6 +3707,29 @@ function updateWorld() {
     (
       game.clientHeight / 2 -
       playerPixelY
+    ) + "px";
+
+  const dockPresentation =
+    mapPresentationSettings.dock;
+
+  dockVisual.style.left =
+    (
+      game.clientWidth / 2 +
+      map.offsetWidth *
+      (
+        dockPresentation.centerXPercent -
+        playerX
+      ) / 100
+    ) + "px";
+
+  dockVisual.style.top =
+    (
+      game.clientHeight / 2 +
+      map.offsetHeight *
+      (
+        dockPresentation.centerYPercent -
+        playerY
+      ) / 100
     ) + "px";
 
   miniPlayer.style.left =
