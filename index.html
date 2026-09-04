@@ -44,17 +44,71 @@ html, body {
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
+  opacity: 0;
 }
 
-/*
-  map.jpg に描き込まれている桟橋だけを表示上で分離する。
-  元画像は衝突判定にそのまま使うため、ゲーム座標には影響しない。
-*/
-#dockMapMask {
+#mapTiles {
   position: absolute;
-  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1;
   pointer-events: none;
+  background: #123d24;
+}
+
+.mapTileFrame {
+  position: absolute;
+  overflow: hidden;
+  background: #123d24;
   image-rendering: auto;
+}
+
+.mapTileFrame.blendTop {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--tile-feather, 5%),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--tile-feather, 5%),
+    #000 100%
+  );
+}
+
+.mapTileImage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform:
+    translate(-50%, -50%)
+    translate(
+      var(--tile-offset-x, 0%),
+      var(--tile-offset-y, 0%)
+    )
+    scale(var(--tile-zoom, 1.34));
+  object-fit: fill;
+  image-rendering: auto;
+}
+
+.mapTileImage.blendLeft {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--tile-feather, 5%),
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--tile-feather, 5%),
+    #000 100%
+  );
 }
 
 #dockVisual {
@@ -1019,7 +1073,7 @@ html, body {
 
   <div id="world">
     <img id="map" src="map.jpg" alt="Game Map" decoding="async">
-    <canvas id="dockMapMask" aria-hidden="true"></canvas>
+    <div id="mapTiles" aria-hidden="true"></div>
   </div>
 
   <canvas id="dockVisual" aria-hidden="true"></canvas>
@@ -1183,7 +1237,7 @@ html, body {
 const game = document.getElementById("game");
 const world = document.getElementById("world");
 const map = document.getElementById("map");
-const dockMapMask = document.getElementById("dockMapMask");
+const mapTiles = document.getElementById("mapTiles");
 const dockVisual = document.getElementById("dockVisual");
 const boat = document.getElementById("boat");
 
@@ -1429,23 +1483,60 @@ const worldScaleSettings = {
   ゲーム世界の大きさ・座標・衝突判定とは独立している。
 */
 const mapPresentationSettings = {
-  imagePath: "map.jpg",
+  collisionImagePath: "map.jpg",
+  minimapImagePath: "kanogawa_map_００.png",
+  columns: 4,
+  rows: 5,
+  tileFeatherPercent: 35,
+  defaultTileZoom: 1,
+  tiles: Array.from(
+    { length: 20 },
+    (_, index) => {
+      const column = index % 4;
+      const row = Math.floor(index / 4);
+      const dimensions = [
+        [1254, 1254], [1439, 1093], [1439, 1093], [1254, 1254],
+        [1093, 1439], [1254, 1254], [1254, 1254], [1093, 1438],
+        [1254, 1254], [1094, 1438], [1094, 1438], [1095, 1436],
+        [1254, 1254], [1254, 1254], [1254, 1254], [1093, 1439],
+        [1254, 1254], [1439, 1093], [1439, 1093], [1254, 1254]
+      ][index];
+
+      return {
+        id: String(index + 1).padStart(2, "0"),
+        imagePath:
+          "kanogawa_map_" +
+          String(index + 1).padStart(2, "0") +
+          ".png",
+        column,
+        row,
+        xPercent: [0, 15, 39, 62][column],
+        yPercent: [0, 10, 28, 50, 67][row],
+        widthPercent: dimensions[0] / 3230 * 100,
+        heightPercent:
+          row === 4
+            ? 33
+            : dimensions[1] / 4340 * 100,
+        zoom: 1,
+        offsetXPercent: index === 5 ? -28 : 0,
+        offsetYPercent: index === 5 ? 19 : 0
+      };
+    }
+  ),
   dock: {
     centerXPercent: 33.32,
     centerYPercent: 23.39,
     sourceLeftPercent: 32.55,
     sourceTopPercent: 22.6,
     sourceWidthPercent: 1.55,
-    sourceHeightPercent: 1.58,
-    maskLeftPercent: 32.25,
-    maskTopPercent: 22.15,
-    maskWidthPercent: 2.15,
-    maskHeightPercent: 2.2
+    sourceHeightPercent: 1.58
   }
 };
 
-map.src = mapPresentationSettings.imagePath;
-miniMapImage.src = mapPresentationSettings.imagePath;
+map.src =
+  mapPresentationSettings.collisionImagePath;
+miniMapImage.src =
+  mapPresentationSettings.minimapImagePath;
 
 world.style.setProperty(
   "--world-height",
@@ -1733,99 +1824,70 @@ const processedLogoCache =
    マップ読み込み
 ========================= */
 
+function renderMapTiles() {
+  const settings = mapPresentationSettings;
+
+  mapTiles.replaceChildren();
+
+  settings.tiles.forEach((tile) => {
+    const frame = document.createElement("div");
+    const image = document.createElement("img");
+    const hasLeftNeighbor = tile.column > 0;
+    const hasTopNeighbor = tile.row > 0;
+
+    frame.className = "mapTileFrame";
+    if (hasTopNeighbor) {
+      frame.classList.add("blendTop");
+    }
+
+    frame.style.left =
+      tile.xPercent + "%";
+    frame.style.top =
+      tile.yPercent + "%";
+    frame.style.width =
+      tile.widthPercent + "%";
+    frame.style.height =
+      tile.heightPercent + "%";
+    frame.style.zIndex =
+      String(tile.row * settings.columns + tile.column + 1);
+    frame.style.setProperty(
+      "--tile-feather",
+      settings.tileFeatherPercent + "%"
+    );
+
+    image.className = "mapTileImage";
+    if (hasLeftNeighbor) {
+      image.classList.add("blendLeft");
+    }
+    image.src = tile.imagePath;
+    image.alt = "";
+    image.decoding = "async";
+    image.draggable = false;
+    image.style.setProperty(
+      "--tile-zoom",
+      String(tile.zoom ?? settings.defaultTileZoom)
+    );
+    image.style.setProperty(
+      "--tile-offset-x",
+      (tile.offsetXPercent ?? 0) + "%"
+    );
+    image.style.setProperty(
+      "--tile-offset-y",
+      (tile.offsetYPercent ?? 0) + "%"
+    );
+
+    frame.append(image);
+    mapTiles.append(frame);
+  });
+}
+
+
 function prepareDockPresentation() {
   const dock =
     mapPresentationSettings.dock;
 
   const sourceWidth = map.naturalWidth;
   const sourceHeight = map.naturalHeight;
-
-  const maskLeft = Math.round(
-    sourceWidth * dock.maskLeftPercent / 100
-  );
-  const maskTop = Math.round(
-    sourceHeight * dock.maskTopPercent / 100
-  );
-  const maskWidth = Math.max(
-    1,
-    Math.round(
-      sourceWidth * dock.maskWidthPercent / 100
-    )
-  );
-  const maskHeight = Math.max(
-    1,
-    Math.round(
-      sourceHeight * dock.maskHeightPercent / 100
-    )
-  );
-
-  const maskPixels = collisionCtx.getImageData(
-    maskLeft,
-    maskTop,
-    maskWidth,
-    maskHeight
-  );
-
-  const maskData = maskPixels.data;
-
-  for (let y = 0; y < maskHeight; y += 1) {
-    const patchStart = Math.round(
-      maskWidth * 0.04
-    );
-    const patchEnd = Math.round(
-      maskWidth * 0.96
-    );
-
-    /* 桟橋の外側にある岸・水面だけを補間元にする */
-    const leftSample = 0;
-    const rightSample = maskWidth - 1;
-
-    for (let x = 0; x < maskWidth; x += 1) {
-      const pixelIndex =
-        (y * maskWidth + x) * 4;
-
-      if (
-        x < patchStart ||
-        x > patchEnd
-      ) {
-        maskData[pixelIndex + 3] = 0;
-        continue;
-      }
-
-      const blend =
-        (x - patchStart) /
-        Math.max(1, patchEnd - patchStart);
-
-      const leftIndex =
-        (y * maskWidth + leftSample) * 4;
-      const rightIndex =
-        (y * maskWidth + rightSample) * 4;
-
-      for (let channel = 0; channel < 3; channel += 1) {
-        maskData[pixelIndex + channel] = Math.round(
-          maskData[leftIndex + channel] * (1 - blend) +
-          maskData[rightIndex + channel] * blend
-        );
-      }
-
-      maskData[pixelIndex + 3] = 255;
-    }
-  }
-
-  dockMapMask.width = maskWidth;
-  dockMapMask.height = maskHeight;
-  dockMapMask.style.left =
-    dock.maskLeftPercent + "%";
-  dockMapMask.style.top =
-    dock.maskTopPercent + "%";
-  dockMapMask.style.width =
-    dock.maskWidthPercent + "%";
-  dockMapMask.style.height =
-    dock.maskHeightPercent + "%";
-
-  dockMapMask
-    .getContext("2d")
-    .putImageData(maskPixels, 0, 0);
 
   const dockLeft = Math.round(
     sourceWidth * dock.sourceLeftPercent / 100
@@ -1895,6 +1957,8 @@ function prepareDockPresentation() {
 }
 
 function prepareMap() {
+
+  renderMapTiles();
 
   collisionCanvas.width =
     map.naturalWidth;
