@@ -59,7 +59,7 @@ html, body {
 .mapTileFrame {
   position: absolute;
   overflow: hidden;
-  background: #123d24;
+  background: transparent;
   image-rendering: auto;
 }
 
@@ -109,6 +109,46 @@ html, body {
     #000 var(--tile-feather, 5%),
     #000 100%
   );
+}
+
+/*
+  02は桟橋を含む画像本体をそのまま最前面に残す。
+  四角い外周だけが見えないよう、重複境界のごく狭い範囲だけを
+  下層タイルへフェードさせる。
+*/
+.mapTileFrame.preserveForeground {
+  -webkit-mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--tile-feather, 1%),
+      #000 calc(100% - var(--tile-feather, 1%)),
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--tile-feather, 1%),
+      #000 calc(100% - var(--tile-feather, 1%)),
+      transparent 100%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent 0,
+      #000 var(--tile-feather, 1%),
+      #000 calc(100% - var(--tile-feather, 1%)),
+      transparent 100%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0,
+      #000 var(--tile-feather, 1%),
+      #000 calc(100% - var(--tile-feather, 1%)),
+      transparent 100%
+    );
+  mask-composite: intersect;
 }
 
 /* ボート */
@@ -1471,7 +1511,7 @@ const mapPresentationSettings = {
   minimapImagePath: "kanogawa_map_００.png",
   columns: 4,
   rows: 5,
-  tileFeatherPercent: 35,
+  tileFeatherPercent: 1,
   defaultTileZoom: 1,
   tiles: Array.from(
     { length: 20 },
@@ -1824,6 +1864,9 @@ function renderMapTiles() {
       tile.id === "02";
 
     frame.className = "mapTileFrame";
+    if (preservesOriginalAppearance) {
+      frame.classList.add("preserveForeground");
+    }
     if (
       hasTopNeighbor &&
       !preservesOriginalAppearance
