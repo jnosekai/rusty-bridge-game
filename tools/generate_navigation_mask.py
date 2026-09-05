@@ -76,10 +76,9 @@ def main() -> None:
     visual = Image.new("RGB", WORLD_SIZE, (18, 61, 36))
 
     # Normal row-major z-order first; tile 02 remains the visual foreground tile.
-    order = [index for index in range(20) if index != 1] + [1]
+    order = [index for index in range(18) if index != 1] + [1]
     for index in order:
-        tile_root = ROOT / "seamless-map" if index < 18 else ROOT
-        path = tile_root / f"kanogawa_map_{index + 1:02d}.png"
+        path = ROOT / "seamless-map" / f"kanogawa_map_{index + 1:02d}.png"
         with Image.open(path) as source:
             paste_clipped(visual, source.convert("RGB"), tile_frame(index))
 

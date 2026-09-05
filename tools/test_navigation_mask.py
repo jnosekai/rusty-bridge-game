@@ -31,13 +31,13 @@ def main() -> None:
         "dock right water": (34.0, 24.3),
         "deep water below dock": (33.3, 28.2),
         "shallow water beside dock": (35.0, 25.0),
-        "lower narrow channel": (50.0, 80.0),
+        "lower narrow channel": (48.0, 80.0),
         "upper inlet": (70.0, 8.0),
     }
     expected_blocked = {
         "dock wood": (33.3, 22.8),
         "shore left of dock basin": (30.0, 26.1),
-        "central forest": (50.0, 40.0),
+        "central forest": (40.0, 40.0),
         "left forest": (20.0, 50.0),
         "right forest": (80.0, 50.0),
     }
