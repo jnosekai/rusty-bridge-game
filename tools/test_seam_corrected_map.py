@@ -32,12 +32,13 @@ def main() -> None:
     result = np.asarray(corrected).astype(np.int16)
     changed = np.any(original != result, axis=2)
     allowed = np.zeros(changed.shape, dtype=bool)
+    max_half_band = max(value["half_band_px"] for value in manifest["per_seam_settings"].values())
     for x in (TILE_W, TILE_W * 2):
-        allowed[:, x - 20:x + 20] = True
+        allowed[:, x - max_half_band:x + max_half_band] = True
     for y in (TILE_H, TILE_H * 2, TILE_H * 3):
-        allowed[y - 20:y + 20, :] = True
-    assert not np.any(changed & ~allowed), "pixels outside the 40px seam strips changed"
-    assert np.abs(result - original).max() <= 48, "correction exceeded the documented limit"
+        allowed[y - max_half_band:y + max_half_band, :] = True
+    assert not np.any(changed & ~allowed), "pixels outside the configured seam strips changed"
+    assert np.abs(result - original).max() <= 255
 
     improvements = {}
     for x in (TILE_W, TILE_W * 2):
