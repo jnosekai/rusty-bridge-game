@@ -42,7 +42,9 @@ def assert_asset_properties() -> None:
 
 
 def assert_navigation_corridor() -> None:
-    mask = Image.open(ROOT / "navigation-mask.png").convert("L")
+    mask = Image.open(
+        ROOT / "kanogawa-8x-map" / "navigation-mask.png"
+    ).convert("L")
     master = PLACEMENT["master"]
     route = [
         (2230, 3650),

@@ -13,8 +13,8 @@ filters, or color correction in this order:
 
 Every tile is 1496 x 1402 RGBA pixels with a fully opaque alpha channel. The
 assembled master is 4488 x 5608 pixels. The game keeps using its existing world
-coordinate system and navigation mask; `index.html?map=kanogawa8x` only changes
-the background presentation.
+coordinate system; the background and its independent navigation mask are both
+mapped proportionally onto those unchanged world coordinates.
 
 Despite the historical `8x` name, the 4488 x 5608 master is physically 4x the
 1122 x 1402 reference dimensions. The filename is retained for compatibility.
@@ -34,10 +34,14 @@ Artifacts in this directory:
 - `bridge/`: trimmed bridge foreground, deterministic alpha-derived shadow,
   placement data, and inspection previews.
 - `kanogawa-minimap.png`: bridge composite used only by the high-resolution map.
+- `navigation-mask.png`: 1122 x 1402 binary mask generated from the 12-tile
+  master. Water connected to the dock is white; land and a uniform four-pixel
+  shoreline clearance are black.
 
 Rebuild the deterministic artifacts with:
 
 ```sh
 python3 tools/build_kanogawa_8x_map.py
 python3 tools/build_rusty_bridge_assets.py
+python3 tools/generate_kanogawa_8x_navigation_mask.py
 ```

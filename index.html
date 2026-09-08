@@ -10,6 +10,11 @@
   box-sizing: border-box;
 }
 
+:root {
+  --boat-width-desktop: 60px;
+  --boat-width-mobile: 45px;
+}
+
 html, body {
   margin: 0;
   width: 100%;
@@ -241,7 +246,7 @@ html, body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 48px;
+  width: var(--boat-width-desktop);
   transform: translate(-50%, -50%) rotate(180deg);
   transform-origin: center;
   z-index: 20;
@@ -1108,7 +1113,7 @@ html, body {
 @media (max-width: 600px) {
 
   #boat {
-    width: 36px;
+    width: var(--boat-width-mobile);
   }
 
   #minimap {
@@ -1733,7 +1738,9 @@ const mapPresentationSettings = {
 };
 
 const navigationMaskSettings = {
-  imagePath: "navigation-mask.png",
+  legacyImagePath: "navigation-mask.png",
+  highResolutionImagePath:
+    "kanogawa-8x-map/navigation-mask.png",
   navigableThreshold: 128
 };
 
@@ -1744,7 +1751,11 @@ miniMapImage.src =
     ? "kanogawa-8x-map/kanogawa-minimap.png"
     : mapPresentationSettings.minimapImagePath;
 navigationMaskImage.src =
-  navigationMaskSettings.imagePath;
+  activeMapMode === "kanogawa8x"
+    ? navigationMaskSettings
+      .highResolutionImagePath
+    : navigationMaskSettings
+      .legacyImagePath;
 
 world.style.setProperty(
   "--world-height",
