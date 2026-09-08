@@ -1667,7 +1667,7 @@ const highResolutionMapSettings = {
   tiles: Array.from({ length: 12 }, (_, index) => ({
     id: String(index + 1).padStart(2, "0"),
     imagePath:
-      "kanogawa-8x-map/bleed/kanogawa-final-" +
+      "kanogawa-8x-map/seam-corrected/bleed/kanogawa-final-" +
       String(index + 1).padStart(2, "0") +
       ".png",
     column: index % 3,
