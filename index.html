@@ -87,6 +87,10 @@ html, body {
   z-index: 25;
 }
 
+#bridgeConnectionLayer {
+  z-index: 26;
+}
+
 #bridgeDebugLayer {
   z-index: 35;
 }
@@ -1187,6 +1191,7 @@ html, body {
     <div id="mapTiles" aria-hidden="true"></div>
     <div id="bridgeShadowLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
     <div id="bridgeForegroundLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
+    <div id="bridgeConnectionLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
     <div id="bridgeDebugLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
   </div>
 
@@ -1353,6 +1358,7 @@ const map = document.getElementById("map");
 const mapTiles = document.getElementById("mapTiles");
 const bridgeShadowLayer = document.getElementById("bridgeShadowLayer");
 const bridgeForegroundLayer = document.getElementById("bridgeForegroundLayer");
+const bridgeConnectionLayer = document.getElementById("bridgeConnectionLayer");
 const bridgeDebugLayer = document.getElementById("bridgeDebugLayer");
 const boat = document.getElementById("boat");
 
@@ -2096,6 +2102,7 @@ function clearBridgeLayers() {
   [
     bridgeShadowLayer,
     bridgeForegroundLayer,
+    bridgeConnectionLayer,
     bridgeDebugLayer
   ].forEach((layer) => {
     layer.style.display = "none";
@@ -2170,8 +2177,12 @@ async function renderBridgeLayers() {
 
   const shadowSurface = createBridgeSurface(bridgeShadowLayer);
   const foregroundSurface = createBridgeSurface(bridgeForegroundLayer);
+  const connectionSurface = createBridgeSurface(bridgeConnectionLayer);
   appendBridgeImage(shadowSurface, bridgePlacement.shadow);
   appendBridgeImage(foregroundSurface, bridgePlacement.foreground);
+  bridgePlacement.connections.forEach((connection) => {
+    appendBridgeImage(connectionSurface, connection);
+  });
 
   if (bridgeDebugVisible) {
     const debugSurface = createBridgeSurface(bridgeDebugLayer);

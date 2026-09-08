@@ -38,9 +38,31 @@
     "height": 248,
     "offsetX": 0,
     "offsetY": 0,
-    "opacity": 0.39215686274509803,
+    "opacity": 0.11764705882352941,
     "blurSourcePixels": 0
   },
+  "connections": [
+    {
+      "id": "west",
+      "path": "rusty-bridge-left-bank.png",
+      "naturalWidth": 140,
+      "naturalHeight": 220,
+      "x": 2140,
+      "y": 3840,
+      "width": 140,
+      "height": 220
+    },
+    {
+      "id": "east",
+      "path": "rusty-bridge-right-bank.png",
+      "naturalWidth": 180,
+      "naturalHeight": 220,
+      "x": 2500,
+      "y": 3720,
+      "width": 180,
+      "height": 220
+    }
+  ],
   "passage": {
     "description": "Navigable water under the bridge deck",
     "x": 2250,
