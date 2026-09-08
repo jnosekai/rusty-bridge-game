@@ -44,7 +44,7 @@ html, body {
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
-  opacity: 0;
+  opacity: 1;
 }
 
 #mapTiles {
@@ -53,7 +53,31 @@ html, body {
   overflow: hidden;
   z-index: 1;
   pointer-events: none;
+  display: none;
   background: #123d24;
+}
+
+.highResMapSurface {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--high-res-map-width);
+  height: var(--high-res-map-height);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.highResMapTile {
+  position: absolute;
+  width: var(--high-res-tile-width);
+  height: var(--high-res-tile-height);
+  display: block;
+  max-width: none;
+  max-height: none;
+  image-rendering: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .mapTileFrame {
@@ -1507,13 +1531,41 @@ const worldScaleSettings = {
   distanceMultiplier: 2
 };
 
+const requestedMapMode =
+  new URLSearchParams(window.location.search)
+    .get("map");
+
+const activeMapMode =
+  requestedMapMode === "kanogawa8x"
+    ? "kanogawa8x"
+    : "legacy";
+
+const highResolutionMapSettings = {
+  id: "kanogawa8x",
+  columns: 3,
+  rows: 4,
+  tileWidth: 1496,
+  tileHeight: 1402,
+  width: 4488,
+  height: 5608,
+  tiles: Array.from({ length: 12 }, (_, index) => ({
+    id: String(index + 1).padStart(2, "0"),
+    imagePath:
+      "kanogawa-final-" +
+      String(index + 1).padStart(2, "0") +
+      ".png",
+    column: index % 3,
+    row: Math.floor(index / 3)
+  }))
+};
+
 /*
   高解像度マップへの差し替えはここだけを変更する。
   ゲーム世界の大きさ・座標・衝突判定とは独立している。
 */
 const mapPresentationSettings = {
   worldSizingImagePath: "map.jpg",
-  minimapImagePath: "kanogawa_map_００.png",
+  minimapImagePath: "map.jpg",
   columns: 4,
   rows: 5,
   tileFeatherPercent: 1,
@@ -1866,6 +1918,91 @@ const processedLogoCache =
 ========================= */
 
 function renderMapTiles() {
+  if (activeMapMode === "kanogawa8x") {
+    renderHighResolutionMapTiles();
+    return;
+  }
+
+  map.style.opacity = "1";
+  mapTiles.style.display = "none";
+  mapTiles.replaceChildren();
+}
+
+function renderHighResolutionMapTiles() {
+  const settings = highResolutionMapSettings;
+  const surface = document.createElement("div");
+
+  map.style.opacity = "0";
+  mapTiles.style.display = "block";
+  mapTiles.replaceChildren();
+
+  surface.className = "highResMapSurface";
+  surface.style.setProperty(
+    "--high-res-map-width",
+    settings.width + "px"
+  );
+  surface.style.setProperty(
+    "--high-res-map-height",
+    settings.height + "px"
+  );
+  surface.style.setProperty(
+    "--high-res-tile-width",
+    settings.tileWidth + "px"
+  );
+  surface.style.setProperty(
+    "--high-res-tile-height",
+    settings.tileHeight + "px"
+  );
+  surface.style.transform =
+    "scale(" +
+    map.offsetWidth / settings.width +
+    ", " +
+    map.offsetHeight / settings.height +
+    ")";
+
+  settings.tiles.forEach((tile) => {
+    const image = document.createElement("img");
+
+    image.className = "highResMapTile";
+    image.src = tile.imagePath;
+    image.alt = "";
+    image.decoding = "async";
+    image.draggable = false;
+    image.dataset.tileId = tile.id;
+    image.style.left =
+      tile.column * settings.tileWidth + "px";
+    image.style.top =
+      tile.row * settings.tileHeight + "px";
+
+    surface.append(image);
+  });
+
+  mapTiles.append(surface);
+}
+
+function resizeHighResolutionMapSurface() {
+  if (activeMapMode !== "kanogawa8x") {
+    return;
+  }
+
+  const surface = mapTiles.querySelector(
+    ".highResMapSurface"
+  );
+  if (!surface) {
+    return;
+  }
+
+  surface.style.transform =
+    "scale(" +
+    map.offsetWidth /
+      highResolutionMapSettings.width +
+    ", " +
+    map.offsetHeight /
+      highResolutionMapSettings.height +
+    ")";
+}
+
+function renderLegacyMapTiles() {
   const settings = mapPresentationSettings;
 
   mapTiles.replaceChildren();
@@ -3752,6 +3889,8 @@ function updateWorld() {
   ) {
     return;
   }
+
+  resizeHighResolutionMapSurface();
 
   const playerPixelX =
     map.offsetWidth *
