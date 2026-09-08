@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 
@@ -38,7 +39,15 @@ def assert_asset_properties() -> None:
         foreground.width - alpha_bbox[2],
         foreground.height - alpha_bbox[3],
     ) <= 150
+    alpha = np.asarray(foreground.getchannel("A"))
+    assert (alpha == 0).mean() >= 0.75
+    assert (alpha >= 128).mean() >= 0.08
+    assert not alpha[0, :].any()
+    assert not alpha[-1, :].any()
+    assert not alpha[:, 0].any()
+    assert not alpha[:, -1].any()
     assert shadow.getchannel("A").getextrema()[1] <= 64
+    assert PLACEMENT["source"]["tile"] == "08"
 
 
 def assert_navigation_corridor() -> None:

@@ -1622,10 +1622,12 @@ const requestedBridgeView =
 
 const bridgeViewPositions = {
   north: { x: 2230, y: 3650 },
-  under: { x: 2400, y: 3924 },
+  under: { x: 2414, y: 3874 },
   south: { x: 2390, y: 4140 },
   west: { x: 2180, y: 3960 },
-  east: { x: 2610, y: 3875 }
+  east: { x: 2610, y: 3875 },
+  seamVertical: { x: 2992, y: 3505 },
+  seamHorizontal: { x: 2244, y: 4206 }
 };
 
 function getTripStartPosition() {
@@ -1748,7 +1750,8 @@ map.src =
   mapPresentationSettings.worldSizingImagePath;
 miniMapImage.src =
   activeMapMode === "kanogawa8x"
-    ? "kanogawa-8x-map/kanogawa-minimap.png"
+    ? "kanogawa-8x-map/kanogawa-minimap.png" +
+      "?v=illustrated-bridge-v1"
     : mapPresentationSettings.minimapImagePath;
 navigationMaskImage.src =
   activeMapMode === "kanogawa8x"
@@ -2096,6 +2099,14 @@ function renderHighResolutionMapTiles() {
       tile.displayWidth + "px";
     image.style.height =
       tile.displayHeight + "px";
+    /*
+      Bleed extends to the right and bottom. Keep the source tile above those
+      neighbours so its real overlap pixels cover fractional transform edges.
+    */
+    image.style.zIndex = String(
+      (settings.rows - tile.row) * settings.columns +
+      (settings.columns - tile.column)
+    );
 
     surface.append(image);
   });
@@ -2173,7 +2184,10 @@ async function renderBridgeLayers() {
     return;
   }
 
-  const response = await fetch(bridgeSettingsPath);
+  const response = await fetch(
+    bridgeSettingsPath,
+    { cache: "no-store" }
+  );
   if (!response.ok) {
     throw new Error("Bridge placement could not be loaded");
   }

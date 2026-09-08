@@ -31,8 +31,8 @@ Artifacts in this directory:
 - `kanogawa-map-old-new-comparison.jpg`: old and new maps at a common display size.
 - `kanogawa-map-8x-seams-100pct.jpg`: unscaled source crops centered on all 17 seams.
 - `bleed/kanogawa-final-01.png` through `12.png`: runtime-only one-pixel bleed tiles.
-- `bridge/`: trimmed bridge foreground, deterministic alpha-derived shadow,
-  placement data, and inspection previews.
+- `bridge/`: the approved illustrated tile-08 bridge concept, its extracted
+  foreground, deterministic alpha-derived shadow, placement data, and previews.
 - `kanogawa-minimap.png`: bridge composite used only by the high-resolution map.
 - `navigation-mask.png`: 1122 x 1402 binary mask generated from the 12-tile
   master. Water connected to the dock is white; land and a uniform four-pixel
@@ -42,6 +42,6 @@ Rebuild the deterministic artifacts with:
 
 ```sh
 python3 tools/build_kanogawa_8x_map.py
-python3 tools/build_rusty_bridge_assets.py
+python3 tools/build_illustrated_bridge_assets.py
 python3 tools/generate_kanogawa_8x_navigation_mask.py
 ```

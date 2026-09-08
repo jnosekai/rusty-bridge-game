@@ -4,61 +4,60 @@
     "height": 5608
   },
   "source": {
-    "path": "../rusty-bridge-foreground-source.png",
-    "alphaBoundingBox": [
-      73,
-      21,
-      1639,
-      831
-    ],
-    "width": 1774,
-    "height": 887
+    "path": "kanogawa-final-08-bridge-concept.png",
+    "tile": "08",
+    "crop": [
+      690,
+      930,
+      1145,
+      1210
+    ]
   },
   "foreground": {
-    "path": "../rusty-bridge-foreground-source.png",
-    "naturalWidth": 1774,
-    "naturalHeight": 887,
-    "x": 2121,
-    "y": 3773,
-    "width": 590,
-    "height": 295,
-    "centerX": 2405.0,
-    "centerY": 3914.5,
-    "normalizedX": 0.535873440285205,
-    "normalizedY": 0.6980206847360912
+    "path": "rusty-bridge-illustrated-foreground.png",
+    "naturalWidth": 455,
+    "naturalHeight": 280,
+    "x": 2186,
+    "y": 3734,
+    "width": 455,
+    "height": 280,
+    "centerX": 2413.5,
+    "centerY": 3874.0,
+    "normalizedX": 0.5377673796791443,
+    "normalizedY": 0.6907988587731811
   },
   "shadow": {
-    "path": "rusty-bridge-shadow.png",
-    "naturalWidth": 614,
-    "naturalHeight": 319,
-    "x": 2115,
-    "y": 3775,
-    "width": 614,
-    "height": 319,
-    "offsetX": 6,
-    "offsetY": 14,
-    "opacity": 0.25,
+    "path": "rusty-bridge-illustrated-shadow.png",
+    "naturalWidth": 455,
+    "naturalHeight": 280,
+    "x": 2190,
+    "y": 3742,
+    "width": 455,
+    "height": 280,
+    "offsetX": 4,
+    "offsetY": 8,
+    "opacity": 0.22,
     "blurSourcePixels": 3
   },
   "passage": {
-    "description": "Navigable water under the bridge deck",
-    "x": 2250,
-    "y": 3650,
-    "width": 260,
-    "height": 520
+    "description": "Navigable water under the illustrated bridge",
+    "x": 2290,
+    "y": 3660,
+    "width": 250,
+    "height": 510
   },
   "abutments": [
     {
       "id": "west",
-      "centerX": 2188,
-      "centerY": 3958,
-      "radius": 54
+      "centerX": 2245,
+      "centerY": 3918,
+      "radius": 44
     },
     {
       "id": "east",
-      "centerX": 2572,
-      "centerY": 3888,
-      "radius": 54
+      "centerX": 2582,
+      "centerY": 3805,
+      "radius": 44
     }
   ]
 }
