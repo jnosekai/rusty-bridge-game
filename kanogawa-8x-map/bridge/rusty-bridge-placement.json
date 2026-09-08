@@ -3,66 +3,43 @@
     "width": 4488,
     "height": 5608
   },
-  "reference": {
-    "path": "../kanogawa-map-with-bridge-reference.png",
-    "width": 1122,
-    "height": 1402,
-    "crop": [
-      540,
-      950,
-      660,
-      1012
+  "source": {
+    "path": "../rusty-bridge-foreground-source.png",
+    "alphaBoundingBox": [
+      73,
+      21,
+      1639,
+      831
     ],
-    "scale": 4
+    "width": 1774,
+    "height": 887
   },
   "foreground": {
-    "path": "rusty-bridge-from-map.png",
-    "naturalWidth": 480,
-    "naturalHeight": 248,
-    "x": 2160,
-    "y": 3800,
-    "width": 480,
-    "height": 248,
-    "centerX": 2400.0,
-    "centerY": 3924.0,
-    "normalizedX": 0.5347593582887701,
-    "normalizedY": 0.6997146932952925
+    "path": "../rusty-bridge-foreground-source.png",
+    "naturalWidth": 1774,
+    "naturalHeight": 887,
+    "x": 2121,
+    "y": 3773,
+    "width": 590,
+    "height": 295,
+    "centerX": 2405.0,
+    "centerY": 3914.5,
+    "normalizedX": 0.535873440285205,
+    "normalizedY": 0.6980206847360912
   },
   "shadow": {
     "path": "rusty-bridge-shadow.png",
-    "naturalWidth": 480,
-    "naturalHeight": 248,
-    "x": 2160,
-    "y": 3800,
-    "width": 480,
-    "height": 248,
-    "offsetX": 0,
-    "offsetY": 0,
-    "opacity": 0.11764705882352941,
-    "blurSourcePixels": 0
+    "naturalWidth": 614,
+    "naturalHeight": 319,
+    "x": 2115,
+    "y": 3775,
+    "width": 614,
+    "height": 319,
+    "offsetX": 6,
+    "offsetY": 14,
+    "opacity": 0.25,
+    "blurSourcePixels": 3
   },
-  "connections": [
-    {
-      "id": "west",
-      "path": "rusty-bridge-left-bank.png",
-      "naturalWidth": 140,
-      "naturalHeight": 220,
-      "x": 2140,
-      "y": 3840,
-      "width": 140,
-      "height": 220
-    },
-    {
-      "id": "east",
-      "path": "rusty-bridge-right-bank.png",
-      "naturalWidth": 180,
-      "naturalHeight": 220,
-      "x": 2500,
-      "y": 3720,
-      "width": 180,
-      "height": 220
-    }
-  ],
   "passage": {
     "description": "Navigable water under the bridge deck",
     "x": 2250,
