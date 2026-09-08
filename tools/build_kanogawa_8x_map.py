@@ -17,6 +17,7 @@ TILE_COLUMNS = 3
 TILE_ROWS = 4
 TILE_PATHS = [ROOT / f"kanogawa-final-{number:02}.png" for number in range(1, 13)]
 MASTER_PATH = OUTPUT / "kanogawa-map-no-bridge-8x.png"
+BLEED_OUTPUT = OUTPUT / "bleed"
 
 
 def load_tiles() -> list[Image.Image]:
@@ -42,6 +43,21 @@ def build_master(tiles: list[Image.Image]) -> Image.Image:
         master.paste(tile, (column * tile_width, row * tile_height))
     master.save(MASTER_PATH, optimize=True)
     return master
+
+
+def build_bleed_tiles(master: Image.Image, tile_size: tuple[int, int]) -> None:
+    """Add only the first real neighbor pixel on right/bottom display edges."""
+    BLEED_OUTPUT.mkdir(exist_ok=True)
+    tile_width, tile_height = tile_size
+    for index, path in enumerate(TILE_PATHS):
+        column = index % TILE_COLUMNS
+        row = index // TILE_COLUMNS
+        x = column * tile_width
+        y = row * tile_height
+        display_width = tile_width + (column < TILE_COLUMNS - 1)
+        display_height = tile_height + (row < TILE_ROWS - 1)
+        bleed = master.crop((x, y, x + display_width, y + display_height))
+        bleed.save(BLEED_OUTPUT / path.name, optimize=True)
 
 
 def build_layout_preview(master: Image.Image, tile_size: tuple[int, int]) -> None:
@@ -128,6 +144,7 @@ def main() -> None:
     OUTPUT.mkdir(exist_ok=True)
     tiles = load_tiles()
     master = build_master(tiles)
+    build_bleed_tiles(master, tiles[0].size)
     build_layout_preview(master, tiles[0].size)
     build_comparison(master)
     build_seam_sheet(master, tiles[0].size)

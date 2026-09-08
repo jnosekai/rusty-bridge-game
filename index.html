@@ -55,6 +55,8 @@ html, body {
   pointer-events: none;
   display: none;
   background: #123d24;
+  gap: 0;
+  line-height: 0;
 }
 
 .highResMapSurface {
@@ -65,15 +67,18 @@ html, body {
   height: var(--high-res-map-height);
   transform-origin: 0 0;
   pointer-events: none;
+  gap: 0;
+  line-height: 0;
 }
 
 .highResMapTile {
   position: absolute;
-  width: var(--high-res-tile-width);
-  height: var(--high-res-tile-height);
   display: block;
   max-width: none;
   max-height: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
   image-rendering: auto;
   pointer-events: none;
   user-select: none;
@@ -1551,11 +1556,15 @@ const highResolutionMapSettings = {
   tiles: Array.from({ length: 12 }, (_, index) => ({
     id: String(index + 1).padStart(2, "0"),
     imagePath:
-      "kanogawa-final-" +
+      "kanogawa-8x-map/bleed/kanogawa-final-" +
       String(index + 1).padStart(2, "0") +
       ".png",
     column: index % 3,
-    row: Math.floor(index / 3)
+    row: Math.floor(index / 3),
+    displayWidth:
+      1496 + (index % 3 < 2 ? 1 : 0),
+    displayHeight:
+      1402 + (Math.floor(index / 3) < 3 ? 1 : 0)
   }))
 };
 
@@ -1945,14 +1954,6 @@ function renderHighResolutionMapTiles() {
     "--high-res-map-height",
     settings.height + "px"
   );
-  surface.style.setProperty(
-    "--high-res-tile-width",
-    settings.tileWidth + "px"
-  );
-  surface.style.setProperty(
-    "--high-res-tile-height",
-    settings.tileHeight + "px"
-  );
   surface.style.transform =
     "scale(" +
     map.offsetWidth / settings.width +
@@ -1973,6 +1974,10 @@ function renderHighResolutionMapTiles() {
       tile.column * settings.tileWidth + "px";
     image.style.top =
       tile.row * settings.tileHeight + "px";
+    image.style.width =
+      tile.displayWidth + "px";
+    image.style.height =
+      tile.displayHeight + "px";
 
     surface.append(image);
   });
