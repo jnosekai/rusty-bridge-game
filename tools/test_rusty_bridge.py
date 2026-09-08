@@ -35,7 +35,7 @@ def assert_asset_properties() -> None:
         foreground.width - alpha_bbox[2],
         foreground.height - alpha_bbox[3],
     ) <= 30
-    assert shadow.getchannel("A").getextrema()[1] <= 64
+    assert shadow.getchannel("A").getextrema()[1] <= 100
 
 
 def assert_navigation_corridor() -> None:
@@ -44,7 +44,7 @@ def assert_navigation_corridor() -> None:
     route = [
         (2230, 3650),
         (2300, 3750),
-        (2404.5, 3914.5),
+        (2400, 3924),
         (2400, 4050),
         (2390, 4140),
     ]

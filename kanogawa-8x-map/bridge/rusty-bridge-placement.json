@@ -3,51 +3,43 @@
     "width": 4488,
     "height": 5608
   },
-  "source": {
-    "path": "../rusty-bridge-foreground-source.png",
-    "alphaBoundingBox": [
-      73,
-      21,
-      1639,
-      831
-    ]
+  "reference": {
+    "path": "../kanogawa-map-with-bridge-reference.png",
+    "width": 1122,
+    "height": 1402,
+    "crop": [
+      540,
+      950,
+      660,
+      1012
+    ],
+    "scale": 4
   },
   "foreground": {
-    "path": "rusty-bridge-foreground.png",
-    "naturalWidth": 493,
-    "naturalHeight": 255,
-    "x": 2158,
-    "y": 3787,
-    "width": 493,
-    "height": 255,
-    "centerX": 2404.5,
-    "centerY": 3914.5,
-    "normalizedX": 0.5357620320855615,
-    "normalizedY": 0.6980206847360912
+    "path": "rusty-bridge-from-map.png",
+    "naturalWidth": 480,
+    "naturalHeight": 248,
+    "x": 2160,
+    "y": 3800,
+    "width": 480,
+    "height": 248,
+    "centerX": 2400.0,
+    "centerY": 3924.0,
+    "normalizedX": 0.5347593582887701,
+    "normalizedY": 0.6997146932952925
   },
   "shadow": {
     "path": "rusty-bridge-shadow.png",
-    "naturalWidth": 517,
-    "naturalHeight": 279,
-    "x": 2152.0,
-    "y": 3789.0,
-    "width": 517.0,
-    "height": 279.0,
-    "offsetX": 6,
-    "offsetY": 14,
-    "opacity": 0.25,
-    "blurSourcePixels": 3
-  },
-  "contactShadow": {
-    "path": "rusty-bridge-contact-shadow.png",
-    "naturalWidth": 517,
-    "naturalHeight": 279,
-    "x": 2146,
-    "y": 3775,
-    "width": 517,
-    "height": 279,
-    "opacity": 0.19607843137254902,
-    "blurPixels": 5
+    "naturalWidth": 480,
+    "naturalHeight": 248,
+    "x": 2160,
+    "y": 3800,
+    "width": 480,
+    "height": 248,
+    "offsetX": 0,
+    "offsetY": 0,
+    "opacity": 0.39215686274509803,
+    "blurSourcePixels": 0
   },
   "passage": {
     "description": "Navigable water under the bridge deck",
