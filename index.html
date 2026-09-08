@@ -1617,8 +1617,9 @@ const requestedBridgeView =
 
 const bridgeViewPositions = {
   north: { x: 2230, y: 3650 },
-  under: { x: 2375.5, y: 3912.5 },
-  south: { x: 2390, y: 4140 }
+  under: { x: 2404.5, y: 3914.5 },
+  south: { x: 2390, y: 4140 },
+  east: { x: 2630, y: 3875 }
 };
 
 function getTripStartPosition() {
@@ -2168,6 +2169,7 @@ async function renderBridgeLayers() {
 
   const shadowSurface = createBridgeSurface(bridgeShadowLayer);
   const foregroundSurface = createBridgeSurface(bridgeForegroundLayer);
+  appendBridgeImage(shadowSurface, bridgePlacement.contactShadow);
   appendBridgeImage(shadowSurface, bridgePlacement.shadow);
   appendBridgeImage(foregroundSurface, bridgePlacement.foreground);
 

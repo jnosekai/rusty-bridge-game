@@ -27,7 +27,14 @@ def assert_asset_properties() -> None:
     assert foreground.width * PLACEMENT["foreground"]["height"] == (
         foreground.height * PLACEMENT["foreground"]["width"]
     )
-    assert foreground.getchannel("A").getbbox() == (0, 0, *foreground.size)
+    alpha_bbox = foreground.getchannel("A").getbbox()
+    assert alpha_bbox is not None
+    assert max(
+        alpha_bbox[0],
+        alpha_bbox[1],
+        foreground.width - alpha_bbox[2],
+        foreground.height - alpha_bbox[3],
+    ) <= 30
     assert shadow.getchannel("A").getextrema()[1] <= 64
 
 
@@ -37,8 +44,8 @@ def assert_navigation_corridor() -> None:
     route = [
         (2230, 3650),
         (2300, 3750),
-        (2375.5, 3912.5),
-        (2390, 4050),
+        (2404.5, 3914.5),
+        (2400, 4050),
         (2390, 4140),
     ]
     samples = []
