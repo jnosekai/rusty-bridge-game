@@ -71,6 +71,62 @@ html, body {
   line-height: 0;
 }
 
+.bridgeWorldLayer {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#bridgeShadowLayer {
+  z-index: 2;
+}
+
+#bridgeForegroundLayer {
+  z-index: 25;
+}
+
+#bridgeDebugLayer {
+  z-index: 35;
+}
+
+.bridgeMapSurface {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--high-res-map-width);
+  height: var(--high-res-map-height);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.bridgeLayerImage {
+  position: absolute;
+  display: block;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.bridgePassageDebug,
+.bridgeAbutmentDebug {
+  position: absolute;
+  border: 8px solid rgba(80, 255, 140, 0.95);
+  background: rgba(80, 255, 140, 0.2);
+}
+
+.bridgeAbutmentDebug {
+  border-color: rgba(255, 80, 80, 0.95);
+  background: rgba(255, 80, 80, 0.32);
+  border-radius: 50%;
+}
+
 .highResMapTile {
   position: absolute;
   display: block;
@@ -1129,6 +1185,9 @@ html, body {
   <div id="world">
     <img id="map" src="map.jpg" alt="Game Map" decoding="async">
     <div id="mapTiles" aria-hidden="true"></div>
+    <div id="bridgeShadowLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
+    <div id="bridgeForegroundLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
+    <div id="bridgeDebugLayer" class="bridgeWorldLayer" aria-hidden="true"></div>
   </div>
 
   <img id="boat" src="boat.png" alt="Boat">
@@ -1292,6 +1351,9 @@ const game = document.getElementById("game");
 const world = document.getElementById("world");
 const map = document.getElementById("map");
 const mapTiles = document.getElementById("mapTiles");
+const bridgeShadowLayer = document.getElementById("bridgeShadowLayer");
+const bridgeForegroundLayer = document.getElementById("bridgeForegroundLayer");
+const bridgeDebugLayer = document.getElementById("bridgeDebugLayer");
 const boat = document.getElementById("boat");
 
 const miniMapImage = document.getElementById("miniMapImage");
@@ -1541,9 +1603,49 @@ const requestedMapMode =
     .get("map");
 
 const activeMapMode =
-  requestedMapMode === "kanogawa8x"
-    ? "kanogawa8x"
-    : "legacy";
+  requestedMapMode === "legacy"
+    ? "legacy"
+    : "kanogawa8x";
+
+const bridgeDebugVisible =
+  new URLSearchParams(window.location.search)
+    .get("bridgeDebug") === "1";
+
+const requestedBridgeView =
+  new URLSearchParams(window.location.search)
+    .get("bridgeView");
+
+const bridgeViewPositions = {
+  north: { x: 2230, y: 3650 },
+  under: { x: 2375.5, y: 3912.5 },
+  south: { x: 2390, y: 4140 }
+};
+
+function getTripStartPosition() {
+  const bridgeViewPosition =
+    activeMapMode === "kanogawa8x"
+      ? bridgeViewPositions[requestedBridgeView]
+      : null;
+  if (!bridgeViewPosition) {
+    return { x: dockX, y: dockY };
+  }
+  return {
+    x:
+      bridgeViewPosition.x /
+      highResolutionMapSettings.width * 100,
+    y:
+      bridgeViewPosition.y /
+      highResolutionMapSettings.height * 100
+  };
+}
+
+const bridgeSettingsPath =
+  "kanogawa-8x-map/bridge/rusty-bridge-placement.json";
+
+const bridgeAssetBasePath =
+  "kanogawa-8x-map/bridge/";
+
+let bridgePlacement = null;
 
 const highResolutionMapSettings = {
   id: "kanogawa8x",
@@ -1636,7 +1738,9 @@ const navigationMaskSettings = {
 map.src =
   mapPresentationSettings.worldSizingImagePath;
 miniMapImage.src =
-  mapPresentationSettings.minimapImagePath;
+  activeMapMode === "kanogawa8x"
+    ? "kanogawa-8x-map/kanogawa-minimap.png"
+    : mapPresentationSettings.minimapImagePath;
 navigationMaskImage.src =
   navigationMaskSettings.imagePath;
 
@@ -1935,6 +2039,7 @@ function renderMapTiles() {
   map.style.opacity = "1";
   mapTiles.style.display = "none";
   mapTiles.replaceChildren();
+  clearBridgeLayers();
 }
 
 function renderHighResolutionMapTiles() {
@@ -1945,7 +2050,7 @@ function renderHighResolutionMapTiles() {
   mapTiles.style.display = "block";
   mapTiles.replaceChildren();
 
-  surface.className = "highResMapSurface";
+  surface.className = "highResMapSurface mapCoordinateSurface";
   surface.style.setProperty(
     "--high-res-map-width",
     settings.width + "px"
@@ -1985,26 +2090,117 @@ function renderHighResolutionMapTiles() {
   mapTiles.append(surface);
 }
 
+function clearBridgeLayers() {
+  [
+    bridgeShadowLayer,
+    bridgeForegroundLayer,
+    bridgeDebugLayer
+  ].forEach((layer) => {
+    layer.style.display = "none";
+    layer.replaceChildren();
+  });
+  bridgePlacement = null;
+}
+
+function createBridgeSurface(layer) {
+  const surface = document.createElement("div");
+  surface.className = "bridgeMapSurface mapCoordinateSurface";
+  surface.style.setProperty(
+    "--high-res-map-width",
+    highResolutionMapSettings.width + "px"
+  );
+  surface.style.setProperty(
+    "--high-res-map-height",
+    highResolutionMapSettings.height + "px"
+  );
+  layer.replaceChildren(surface);
+  layer.style.display = "block";
+  return surface;
+}
+
+function appendBridgeImage(surface, asset) {
+  const image = document.createElement("img");
+  image.className = "bridgeLayerImage";
+  image.src = bridgeAssetBasePath + asset.path;
+  image.alt = "";
+  image.decoding = "async";
+  image.draggable = false;
+  image.style.left = asset.x + "px";
+  image.style.top = asset.y + "px";
+  image.style.width = asset.width + "px";
+  image.style.height = asset.height + "px";
+  surface.append(image);
+}
+
+function renderBridgeDebug(surface, placement) {
+  const passage = document.createElement("div");
+  passage.className = "bridgePassageDebug";
+  passage.style.left = placement.passage.x + "px";
+  passage.style.top = placement.passage.y + "px";
+  passage.style.width = placement.passage.width + "px";
+  passage.style.height = placement.passage.height + "px";
+  surface.append(passage);
+
+  placement.abutments.forEach((abutment) => {
+    const marker = document.createElement("div");
+    marker.className = "bridgeAbutmentDebug";
+    marker.style.left =
+      abutment.centerX - abutment.radius + "px";
+    marker.style.top =
+      abutment.centerY - abutment.radius + "px";
+    marker.style.width = abutment.radius * 2 + "px";
+    marker.style.height = abutment.radius * 2 + "px";
+    surface.append(marker);
+  });
+}
+
+async function renderBridgeLayers() {
+  if (activeMapMode !== "kanogawa8x") {
+    clearBridgeLayers();
+    return;
+  }
+
+  const response = await fetch(bridgeSettingsPath);
+  if (!response.ok) {
+    throw new Error("Bridge placement could not be loaded");
+  }
+  bridgePlacement = await response.json();
+
+  const shadowSurface = createBridgeSurface(bridgeShadowLayer);
+  const foregroundSurface = createBridgeSurface(bridgeForegroundLayer);
+  appendBridgeImage(shadowSurface, bridgePlacement.shadow);
+  appendBridgeImage(foregroundSurface, bridgePlacement.foreground);
+
+  if (bridgeDebugVisible) {
+    const debugSurface = createBridgeSurface(bridgeDebugLayer);
+    renderBridgeDebug(debugSurface, bridgePlacement);
+  }
+
+  resizeHighResolutionMapSurface();
+}
+
 function resizeHighResolutionMapSurface() {
   if (activeMapMode !== "kanogawa8x") {
     return;
   }
 
-  const surface = mapTiles.querySelector(
-    ".highResMapSurface"
+  const surfaces = document.querySelectorAll(
+    ".mapCoordinateSurface"
   );
-  if (!surface) {
+  if (!surfaces.length) {
     return;
   }
 
-  surface.style.transform =
-    "scale(" +
-    map.offsetWidth /
-      highResolutionMapSettings.width +
-    ", " +
-    map.offsetHeight /
-      highResolutionMapSettings.height +
-    ")";
+  surfaces.forEach((surface) => {
+    surface.style.transform =
+      "scale(" +
+      map.offsetWidth /
+        highResolutionMapSettings.width +
+      ", " +
+      map.offsetHeight /
+        highResolutionMapSettings.height +
+      ")";
+  });
 }
 
 function renderLegacyMapTiles() {
@@ -2083,6 +2279,10 @@ function prepareMap() {
 
   renderMapTiles();
 
+  renderBridgeLayers().catch((error) => {
+    console.error(error);
+  });
+
   updateWorld();
 }
 
@@ -2157,6 +2357,25 @@ function isWater(
 
   if (!mapReady) {
     return true;
+  }
+
+  if (
+    activeMapMode === "kanogawa8x" &&
+    bridgePlacement &&
+    bridgePlacement.abutments.some((abutment) => {
+      const masterX =
+        xPercent / 100 *
+        highResolutionMapSettings.width;
+      const masterY =
+        yPercent / 100 *
+        highResolutionMapSettings.height;
+      return Math.hypot(
+        masterX - abutment.centerX,
+        masterY - abutment.centerY
+      ) <= abutment.radius;
+    })
+  ) {
+    return false;
   }
 
   const px =
@@ -3996,8 +4215,10 @@ function resetTrip() {
   tripActive = false;
   closeLureSelection();
 
-  playerX = dockX;
-  playerY = dockY;
+  const tripStartPosition =
+    getTripStartPosition();
+  playerX = tripStartPosition.x;
+  playerY = tripStartPosition.y;
 
   energy = 100;
 

@@ -16,6 +16,9 @@ assembled master is 4488 x 5608 pixels. The game keeps using its existing world
 coordinate system and navigation mask; `index.html?map=kanogawa8x` only changes
 the background presentation.
 
+Despite the historical `8x` name, the 4488 x 5608 master is physically 4x the
+1122 x 1402 reference dimensions. The filename is retained for compatibility.
+
 Runtime images in `bleed/` include the first real pixel from the right and/or
 bottom neighbor. That one-pixel overlap prevents transformed image edges from
 revealing the layer background at fractional browser coordinates. The bleed
@@ -28,9 +31,13 @@ Artifacts in this directory:
 - `kanogawa-map-old-new-comparison.jpg`: old and new maps at a common display size.
 - `kanogawa-map-8x-seams-100pct.jpg`: unscaled source crops centered on all 17 seams.
 - `bleed/kanogawa-final-01.png` through `12.png`: runtime-only one-pixel bleed tiles.
+- `bridge/`: trimmed bridge foreground, deterministic alpha-derived shadow,
+  placement data, and inspection previews.
+- `kanogawa-minimap.png`: bridge composite used only by the high-resolution map.
 
 Rebuild the deterministic artifacts with:
 
 ```sh
 python3 tools/build_kanogawa_8x_map.py
+python3 tools/build_rusty_bridge_assets.py
 ```

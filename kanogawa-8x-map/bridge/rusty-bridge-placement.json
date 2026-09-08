@@ -1,0 +1,62 @@
+{
+  "master": {
+    "width": 4488,
+    "height": 5608
+  },
+  "source": {
+    "path": "../rusty-bridge-foreground-source.png",
+    "alphaBoundingBox": [
+      73,
+      21,
+      1639,
+      831
+    ]
+  },
+  "foreground": {
+    "path": "rusty-bridge-foreground.png",
+    "naturalWidth": 1566,
+    "naturalHeight": 810,
+    "x": 2158,
+    "y": 3800,
+    "width": 435,
+    "height": 225,
+    "centerX": 2375.5,
+    "centerY": 3912.5,
+    "normalizedX": 0.5293003565062389,
+    "normalizedY": 0.6976640513552068
+  },
+  "shadow": {
+    "path": "rusty-bridge-shadow.png",
+    "naturalWidth": 1638,
+    "naturalHeight": 882,
+    "x": 2154.0,
+    "y": 3804.0,
+    "width": 455.0,
+    "height": 245.0,
+    "offsetX": 6,
+    "offsetY": 14,
+    "opacity": 0.25,
+    "blurSourcePixels": 12
+  },
+  "passage": {
+    "description": "Navigable water under the bridge deck",
+    "x": 2250,
+    "y": 3650,
+    "width": 260,
+    "height": 520
+  },
+  "abutments": [
+    {
+      "id": "west",
+      "centerX": 2188,
+      "centerY": 3958,
+      "radius": 54
+    },
+    {
+      "id": "east",
+      "centerX": 2572,
+      "centerY": 3888,
+      "radius": 54
+    }
+  ]
+}
